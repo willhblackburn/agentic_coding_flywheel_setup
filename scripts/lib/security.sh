@@ -250,6 +250,7 @@ print_current_checksums() {
 # Load checksums from YAML file (simple parser)
 load_checksums() {
     local file="${1:-$CHECKSUMS_FILE}"
+    local current_tool=""
 
     if [[ ! -f "$file" ]]; then
         echo -e "${YELLOW}Warning:${NC} Checksums file not found: $file" >&2
@@ -270,7 +271,7 @@ load_checksums() {
 
         # Match sha256 value
         if [[ "$line" =~ sha256:[[:space:]]*\"?([a-f0-9]{64})\"? ]]; then
-            if [[ -n "${current_tool:-}" ]]; then
+            if [[ -n "$current_tool" ]]; then
                 LOADED_CHECKSUMS["$current_tool"]="${BASH_REMATCH[1]}"
             fi
         fi

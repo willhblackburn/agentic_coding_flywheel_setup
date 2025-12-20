@@ -92,11 +92,12 @@ EOF
 # Get list of completed lessons
 get_completed() {
     if [[ -f "$PROGRESS_FILE" ]]; then
-        # Parse JSON with jq if available, otherwise use grep
+        # Parse JSON with jq if available, otherwise use sed (POSIX-compatible)
         if command -v jq &>/dev/null; then
             jq -r '.completed | @csv' "$PROGRESS_FILE" 2>/dev/null | tr -d '"' || echo ""
         else
-            grep -oP '"completed":\s*\[\K[^\]]*' "$PROGRESS_FILE" 2>/dev/null || echo ""
+            # POSIX-compatible: extract array contents with sed
+            sed -n 's/.*"completed":[[:space:]]*\[\([^]]*\)\].*/\1/p' "$PROGRESS_FILE" 2>/dev/null || echo ""
         fi
     else
         echo ""
@@ -116,7 +117,8 @@ get_current() {
     if [[ -f "$PROGRESS_FILE" ]] && command -v jq &>/dev/null; then
         jq -r '.current // 0' "$PROGRESS_FILE" 2>/dev/null || echo "0"
     else
-        grep -oP '"current":\s*\K\d+' "$PROGRESS_FILE" 2>/dev/null || echo "0"
+        # POSIX-compatible: extract current value with sed
+        sed -n 's/.*"current":[[:space:]]*\([0-9]*\).*/\1/p' "$PROGRESS_FILE" 2>/dev/null | head -1 || echo "0"
     fi
 }
 

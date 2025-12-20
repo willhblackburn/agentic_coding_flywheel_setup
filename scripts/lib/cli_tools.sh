@@ -235,7 +235,9 @@ install_lazygit() {
     esac
 
     local version
-    version=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" | grep -Po '"tag_name": "v\K[^"]*' 2>/dev/null) || version="0.44.1"
+    # POSIX-compatible: use sed instead of grep -P
+    version=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" | sed -n 's/.*"tag_name": "v\([^"]*\)".*/\1/p' 2>/dev/null | head -1) || version="0.44.1"
+    [[ -z "$version" ]] && version="0.44.1"
 
     local tmpdir
     tmpdir=$(mktemp -d)
@@ -274,7 +276,9 @@ install_lazydocker() {
     esac
 
     local version
-    version=$(curl -s "https://api.github.com/repos/jesseduffield/lazydocker/releases/latest" | grep -Po '"tag_name": "v\K[^"]*' 2>/dev/null) || version="0.23.3"
+    # POSIX-compatible: use sed instead of grep -P
+    version=$(curl -s "https://api.github.com/repos/jesseduffield/lazydocker/releases/latest" | sed -n 's/.*"tag_name": "v\([^"]*\)".*/\1/p' 2>/dev/null | head -1) || version="0.23.3"
+    [[ -z "$version" ]] && version="0.23.3"
 
     local tmpdir
     tmpdir=$(mktemp -d)
