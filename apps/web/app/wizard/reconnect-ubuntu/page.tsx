@@ -5,21 +5,20 @@ import { useRouter } from "next/navigation";
 import { RefreshCw, Check } from "lucide-react";
 import { Button, Card, CommandCard } from "@/components";
 import { markStepComplete } from "@/lib/wizardSteps";
-import { getVPSIP } from "@/lib/userPreferences";
+import { useVPSIP, useMounted } from "@/lib/userPreferences";
 
 export default function ReconnectUbuntuPage() {
   const router = useRouter();
-  const [vpsIP, setVpsIP] = useState<string | null>(null);
+  const [vpsIP] = useVPSIP();
   const [isNavigating, setIsNavigating] = useState(false);
+  const mounted = useMounted();
 
+  // Redirect if no VPS IP (after hydration)
   useEffect(() => {
-    const storedIP = getVPSIP();
-    if (!storedIP) {
+    if (mounted && vpsIP === null) {
       router.push("/wizard/create-vps");
-      return;
     }
-    setVpsIP(storedIP);
-  }, [router]);
+  }, [mounted, vpsIP, router]);
 
   const handleContinue = useCallback(() => {
     markStepComplete(8);
@@ -33,7 +32,7 @@ export default function ReconnectUbuntuPage() {
     router.push("/wizard/status-check");
   }, [router]);
 
-  if (!vpsIP) {
+  if (!mounted || !vpsIP) {
     return (
       <div className="flex items-center justify-center py-12">
         <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />

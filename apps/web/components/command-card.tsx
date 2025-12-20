@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useSyncExternalStore } from "react";
 import { Check, Copy, Terminal } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,7 @@ export interface CommandCardProps {
 
 type OS = "mac" | "windows" | "linux";
 
-function detectOS(): OS {
+function getOS(): OS {
   if (typeof window === "undefined") return "mac";
 
   // Check localStorage first for user preference
@@ -44,6 +44,34 @@ function detectOS(): OS {
   return "linux";
 }
 
+// Subscribe to storage changes for OS preference
+function subscribeToOS(callback: () => void) {
+  const handleStorage = (e: StorageEvent) => {
+    if (e.key === "acfs-user-os") callback();
+  };
+  window.addEventListener("storage", handleStorage);
+  return () => window.removeEventListener("storage", handleStorage);
+}
+
+// Create a factory for command completion state hooks
+function createCompletionStore(persistKey: string | undefined) {
+  const key = persistKey ? `acfs-command-${persistKey}` : null;
+
+  return {
+    getSnapshot: () => {
+      if (!key || typeof window === "undefined") return false;
+      return localStorage.getItem(key) === "true";
+    },
+    subscribe: (callback: () => void) => {
+      const handleStorage = (e: StorageEvent) => {
+        if (e.key === key) callback();
+      };
+      window.addEventListener("storage", handleStorage);
+      return () => window.removeEventListener("storage", handleStorage);
+    },
+  };
+}
+
 export function CommandCard({
   command,
   macCommand,
@@ -55,23 +83,21 @@ export function CommandCard({
   className,
 }: CommandCardProps) {
   const [copied, setCopied] = useState(false);
-  const [completed, setCompleted] = useState(false);
-  const [os, setOS] = useState<OS>("mac");
 
-  // Detect OS on mount
-  useEffect(() => {
-    setOS(detectOS());
-  }, []);
+  // Use useSyncExternalStore for OS detection
+  const os = useSyncExternalStore(
+    subscribeToOS,
+    getOS,
+    () => "mac" as OS // Server snapshot
+  );
 
-  // Load persisted completion state
-  useEffect(() => {
-    if (persistKey && typeof window !== "undefined") {
-      const stored = localStorage.getItem(`acfs-command-${persistKey}`);
-      if (stored === "true") {
-        setCompleted(true);
-      }
-    }
-  }, [persistKey]);
+  // Use useSyncExternalStore for completion state
+  const completionStore = createCompletionStore(persistKey);
+  const completed = useSyncExternalStore(
+    completionStore.subscribe,
+    completionStore.getSnapshot,
+    () => false // Server snapshot
+  );
 
   // Get the appropriate command for the current OS
   const displayCommand = (() => {
@@ -102,9 +128,13 @@ export function CommandCard({
 
   const handleCheckboxChange = useCallback(
     (checked: boolean) => {
-      setCompleted(checked);
       if (persistKey && typeof window !== "undefined") {
         localStorage.setItem(`acfs-command-${persistKey}`, String(checked));
+        // Dispatch storage event to trigger re-render
+        window.dispatchEvent(new StorageEvent("storage", {
+          key: `acfs-command-${persistKey}`,
+          newValue: String(checked),
+        }));
       }
       if (checked && onComplete) {
         onComplete();

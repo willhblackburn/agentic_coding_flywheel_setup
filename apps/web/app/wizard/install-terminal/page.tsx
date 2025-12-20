@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ExternalLink, Terminal, Check } from "lucide-react";
 import { Button, Card, CommandCard } from "@/components";
 import { markStepComplete } from "@/lib/wizardSteps";
-import { getUserOS, type OperatingSystem } from "@/lib/userPreferences";
+import { useUserOS, useMounted } from "@/lib/userPreferences";
 
 function MacContent() {
   return (
@@ -115,18 +115,16 @@ function WindowsContent() {
 
 export default function InstallTerminalPage() {
   const router = useRouter();
-  const [os, setOS] = useState<OperatingSystem | null>(null);
+  const [os] = useUserOS();
   const [isNavigating, setIsNavigating] = useState(false);
+  const mounted = useMounted();
 
+  // Redirect if no OS selected (after hydration)
   useEffect(() => {
-    const storedOS = getUserOS();
-    if (storedOS) {
-      setOS(storedOS);
-    } else {
-      // If no OS selected, redirect back to step 1
+    if (mounted && os === null) {
       router.push("/wizard/os-selection");
     }
-  }, [router]);
+  }, [mounted, os, router]);
 
   const handleContinue = useCallback(() => {
     markStepComplete(2);
@@ -134,8 +132,8 @@ export default function InstallTerminalPage() {
     router.push("/wizard/generate-ssh-key");
   }, [router]);
 
-  // Show loading state while detecting OS
-  if (!os) {
+  // Show loading state while detecting OS or during SSR
+  if (!mounted || !os) {
     return (
       <div className="flex items-center justify-center py-12">
         <Terminal className="h-8 w-8 animate-pulse text-muted-foreground" />

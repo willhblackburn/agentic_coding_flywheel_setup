@@ -1,15 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Apple, Monitor } from "lucide-react";
 import { Card } from "@/components";
 import { cn } from "@/lib/utils";
 import { markStepComplete } from "@/lib/wizardSteps";
 import {
-  getUserOS,
-  setUserOS,
-  detectOS,
+  useUserOS,
+  useDetectedOS,
   type OperatingSystem,
 } from "@/lib/userPreferences";
 
@@ -59,27 +58,16 @@ function OSCard({ icon, title, description, selected, onClick }: OSCardProps) {
 
 export default function OSSelectionPage() {
   const router = useRouter();
-  const [selectedOS, setSelectedOS] = useState<OperatingSystem | null>(null);
+  const [storedOS, setStoredOS] = useUserOS();
+  const detectedOS = useDetectedOS();
   const [isNavigating, setIsNavigating] = useState(false);
 
-  // Load stored OS on mount
-  useEffect(() => {
-    const stored = getUserOS();
-    if (stored) {
-      setSelectedOS(stored);
-    } else {
-      // Auto-detect if not previously selected
-      const detected = detectOS();
-      if (detected) {
-        setSelectedOS(detected);
-      }
-    }
-  }, []);
+  // Use stored OS if available, otherwise use detected OS
+  const selectedOS = storedOS ?? detectedOS;
 
   const handleSelectOS = useCallback(
     (os: OperatingSystem) => {
-      setSelectedOS(os);
-      setUserOS(os);
+      setStoredOS(os);
       markStepComplete(1);
       setIsNavigating(true);
 
@@ -88,7 +76,7 @@ export default function OSSelectionPage() {
         router.push("/wizard/install-terminal");
       }, 300);
     },
-    [router]
+    [router, setStoredOS]
   );
 
   return (

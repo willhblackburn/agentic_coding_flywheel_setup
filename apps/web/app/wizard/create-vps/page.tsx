@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, AlertCircle, Server, ChevronDown } from "lucide-react";
 import { Button, Card, Checkbox } from "@/components";
 import { cn } from "@/lib/utils";
 import { markStepComplete } from "@/lib/wizardSteps";
-import { getVPSIP, setVPSIP, isValidIP } from "@/lib/userPreferences";
+import { useVPSIP, isValidIP } from "@/lib/userPreferences";
 
 const CHECKLIST_ITEMS = [
   { id: "ubuntu", label: "Selected Ubuntu 25.x (or newest Ubuntu available)" },
@@ -91,19 +91,12 @@ const PROVIDER_GUIDES = [
 
 export default function CreateVPSPage() {
   const router = useRouter();
+  const [storedIP, setStoredIP] = useVPSIP();
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
-  const [ipAddress, setIpAddress] = useState("");
+  const [ipAddress, setIpAddress] = useState(storedIP ?? "");
   const [ipError, setIpError] = useState<string | null>(null);
   const [expandedProvider, setExpandedProvider] = useState<string | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
-
-  // Load stored IP on mount
-  useEffect(() => {
-    const stored = getVPSIP();
-    if (stored) {
-      setIpAddress(stored);
-    }
-  }, []);
 
   const handleCheckItem = useCallback((itemId: string, checked: boolean) => {
     setCheckedItems((prev) => {
@@ -140,11 +133,11 @@ export default function CreateVPSPage() {
       return;
     }
 
-    setVPSIP(ipAddress);
+    setStoredIP(ipAddress);
     markStepComplete(5);
     setIsNavigating(true);
     router.push("/wizard/ssh-connect");
-  }, [ipAddress, router]);
+  }, [ipAddress, router, setStoredIP]);
 
   const allChecked = CHECKLIST_ITEMS.every((item) =>
     checkedItems.has(item.id)

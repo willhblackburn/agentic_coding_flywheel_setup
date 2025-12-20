@@ -6,7 +6,7 @@ import { Terminal, AlertCircle, Check, ChevronDown } from "lucide-react";
 import { Button, Card, CommandCard } from "@/components";
 import { cn } from "@/lib/utils";
 import { markStepComplete } from "@/lib/wizardSteps";
-import { getVPSIP, getUserOS, type OperatingSystem } from "@/lib/userPreferences";
+import { useVPSIP, useUserOS, useMounted } from "@/lib/userPreferences";
 
 interface TroubleshootingItem {
   error: string;
@@ -117,27 +117,22 @@ function TroubleshootingSection({
 
 export default function SSHConnectPage() {
   const router = useRouter();
-  const [vpsIP, setVpsIP] = useState<string | null>(null);
-  const [os, setOS] = useState<OperatingSystem | null>(null);
+  const [vpsIP] = useVPSIP();
+  const [os] = useUserOS();
   const [expandedError, setExpandedError] = useState<string | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
+  const mounted = useMounted();
 
+  // Redirect if missing required data (after hydration)
   useEffect(() => {
-    const storedIP = getVPSIP();
-    const storedOS = getUserOS();
-
-    if (!storedIP) {
-      router.push("/wizard/create-vps");
-      return;
+    if (mounted) {
+      if (vpsIP === null) {
+        router.push("/wizard/create-vps");
+      } else if (os === null) {
+        router.push("/wizard/os-selection");
+      }
     }
-    if (!storedOS) {
-      router.push("/wizard/os-selection");
-      return;
-    }
-
-    setVpsIP(storedIP);
-    setOS(storedOS);
-  }, [router]);
+  }, [mounted, vpsIP, os, router]);
 
   const handleContinue = useCallback(() => {
     markStepComplete(6);
@@ -145,7 +140,7 @@ export default function SSHConnectPage() {
     router.push("/wizard/run-installer");
   }, [router]);
 
-  if (!vpsIP || !os) {
+  if (!mounted || !vpsIP || !os) {
     return (
       <div className="flex items-center justify-center py-12">
         <Terminal className="h-8 w-8 animate-pulse text-muted-foreground" />

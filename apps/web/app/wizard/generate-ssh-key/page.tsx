@@ -5,21 +5,20 @@ import { useRouter } from "next/navigation";
 import { Key, AlertCircle } from "lucide-react";
 import { Button, Card, CommandCard } from "@/components";
 import { markStepComplete } from "@/lib/wizardSteps";
-import { getUserOS, type OperatingSystem } from "@/lib/userPreferences";
+import { useUserOS, useMounted } from "@/lib/userPreferences";
 
 export default function GenerateSSHKeyPage() {
   const router = useRouter();
-  const [os, setOS] = useState<OperatingSystem | null>(null);
+  const [os] = useUserOS();
   const [isNavigating, setIsNavigating] = useState(false);
+  const mounted = useMounted();
 
+  // Redirect if no OS selected (after hydration)
   useEffect(() => {
-    const storedOS = getUserOS();
-    if (storedOS) {
-      setOS(storedOS);
-    } else {
+    if (mounted && os === null) {
       router.push("/wizard/os-selection");
     }
-  }, [router]);
+  }, [mounted, os, router]);
 
   const handleContinue = useCallback(() => {
     markStepComplete(3);
@@ -27,7 +26,7 @@ export default function GenerateSSHKeyPage() {
     router.push("/wizard/rent-vps");
   }, [router]);
 
-  if (!os) {
+  if (!mounted || !os) {
     return (
       <div className="flex items-center justify-center py-12">
         <Key className="h-8 w-8 animate-pulse text-muted-foreground" />

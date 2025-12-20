@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   WIZARD_STEPS,
-  getCompletedSteps,
+  useCompletedSteps,
   type WizardStep,
 } from "@/lib/wizardSteps";
 
@@ -87,12 +87,7 @@ function StepItem({
  * - Click navigation to completed steps only
  */
 export function Stepper({ currentStep, onStepClick, className }: StepperProps) {
-  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
-
-  // Load completed steps from localStorage on mount
-  useEffect(() => {
-    setCompletedSteps(getCompletedSteps());
-  }, []);
+  const [completedSteps] = useCompletedSteps();
 
   const handleStepClick = useCallback(
     (stepId: number) => {
@@ -139,11 +134,7 @@ export function StepperMobile({
   onStepClick,
   className,
 }: StepperProps) {
-  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
-
-  useEffect(() => {
-    setCompletedSteps(getCompletedSteps());
-  }, []);
+  const [completedSteps] = useCompletedSteps();
 
   const currentStepData = WIZARD_STEPS.find((s) => s.id === currentStep);
   const progress = (completedSteps.length / WIZARD_STEPS.length) * 100;

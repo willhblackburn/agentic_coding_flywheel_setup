@@ -3,7 +3,10 @@
  *
  * Defines the 10 steps of the ACFS setup wizard.
  * Each step guides beginners from "I have a laptop" to "fully configured VPS".
+ * Uses useSyncExternalStore for React 19 compatible state management.
  */
+
+import { useSyncExternalStore, useCallback } from "react";
 
 export interface WizardStep {
   /** Step number (1-10) */
@@ -124,6 +127,46 @@ export function markStepComplete(stepId: number): number[] {
     completed.push(stepId);
     completed.sort((a, b) => a - b);
     setCompletedSteps(completed);
+    emitStepsChange();
   }
   return completed;
+}
+
+// --- React Hooks using useSyncExternalStore ---
+
+// Event emitter for step changes within the same tab
+const stepsListeners = new Set<() => void>();
+
+function emitStepsChange() {
+  stepsListeners.forEach((listener) => listener());
+}
+
+function subscribeToSteps(callback: () => void) {
+  stepsListeners.add(callback);
+  const handleStorage = (e: StorageEvent) => {
+    if (e.key === COMPLETED_STEPS_KEY) callback();
+  };
+  window.addEventListener("storage", handleStorage);
+  return () => {
+    stepsListeners.delete(callback);
+    window.removeEventListener("storage", handleStorage);
+  };
+}
+
+/**
+ * Hook to get and manage completed wizard steps.
+ * Uses useSyncExternalStore for React 19 compatibility.
+ */
+export function useCompletedSteps(): [number[], (stepId: number) => void] {
+  const steps = useSyncExternalStore(
+    subscribeToSteps,
+    getCompletedSteps,
+    () => [] // Server snapshot
+  );
+
+  const markComplete = useCallback((stepId: number) => {
+    markStepComplete(stepId);
+  }, []);
+
+  return [steps, markComplete];
 }

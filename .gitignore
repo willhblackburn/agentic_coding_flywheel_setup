@@ -108,3 +108,6 @@ Cargo.lock
 
 # ----- Source conversations -----
 2025-12-20-chatgpt-website_tech_stack_update.md
+
+# bv (beads viewer) local config and caches
+.bv/
