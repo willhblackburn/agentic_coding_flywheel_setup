@@ -22,6 +22,16 @@ LESSONS_DIR="${ACFS_LESSONS_DIR:-$HOME/.acfs/onboard/lessons}"
 PROGRESS_FILE="${ACFS_PROGRESS_FILE:-$HOME/.acfs/onboard_progress.json}"
 VERSION="0.1.0"
 
+# Source gum_ui library if available for consistent theming
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -f "$SCRIPT_DIR/../scripts/lib/gum_ui.sh" ]]; then
+    # shellcheck disable=SC1091
+    source "$SCRIPT_DIR/../scripts/lib/gum_ui.sh"
+elif [[ -f "$HOME/.acfs/scripts/lib/gum_ui.sh" ]]; then
+    # shellcheck disable=SC1091
+    source "$HOME/.acfs/scripts/lib/gum_ui.sh"
+fi
+
 # Lesson titles (indexed 0-7)
 declare -a LESSON_TITLES=(
     "Welcome & Overview"
@@ -46,16 +56,27 @@ declare -a LESSON_FILES=(
     "07_flywheel_loop.md"
 )
 
-# Colors (works in most terminals)
+# Colors (works in most terminals) - fallback if gum_ui not loaded
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
-# BLUE='\033[0;34m'  # Currently unused
+BLUE='\033[0;34m'
 MAGENTA='\033[0;35m'
 CYAN='\033[0;36m'
 BOLD='\033[1m'
 DIM='\033[2m'
 NC='\033[0m' # No Color
+
+# Catppuccin Mocha color scheme (if not already set by gum_ui)
+ACFS_PRIMARY="${ACFS_PRIMARY:-#89b4fa}"
+ACFS_SECONDARY="${ACFS_SECONDARY:-#74c7ec}"
+ACFS_SUCCESS="${ACFS_SUCCESS:-#a6e3a1}"
+ACFS_WARNING="${ACFS_WARNING:-#f9e2af}"
+ACFS_ERROR="${ACFS_ERROR:-#f38ba8}"
+ACFS_MUTED="${ACFS_MUTED:-#6c7086}"
+ACFS_ACCENT="${ACFS_ACCENT:-#cba6f7}"
+ACFS_PINK="${ACFS_PINK:-#f5c2e7}"
+ACFS_TEAL="${ACFS_TEAL:-#94e2d5}"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Utility Functions
@@ -171,15 +192,15 @@ print_header() {
     if has_gum; then
         gum style \
             --border rounded \
-            --border-foreground 212 \
+            --border-foreground "$ACFS_ACCENT" \
             --padding "1 4" \
             --margin "1" \
-            "$(gum style --foreground 212 --bold 'ACFS Onboarding')" \
-            "$(gum style --foreground 245 --italic "Learn the agentic coding workflow")"
+            "$(gum style --foreground "$ACFS_PINK" --bold '📚 ACFS Onboarding')" \
+            "$(gum style --foreground "$ACFS_MUTED" --italic "Learn the agentic coding workflow")"
     else
         echo ""
         echo -e "${BOLD}${MAGENTA}╭─────────────────────────────────────────╮${NC}"
-        echo -e "${BOLD}${MAGENTA}│       ACFS Onboarding Tutorial          │${NC}"
+        echo -e "${BOLD}${MAGENTA}│       📚 ACFS Onboarding Tutorial       │${NC}"
         echo -e "${BOLD}${MAGENTA}│  Learn the agentic coding workflow      │${NC}"
         echo -e "${BOLD}${MAGENTA}╰─────────────────────────────────────────╯${NC}"
         echo ""
@@ -210,27 +231,31 @@ show_menu_gum() {
     local current
     current=$(get_current)
 
-    # Build menu items
+    # Build menu items with styled status indicators
     local -a items=()
     for i in {0..7}; do
         local status=""
         if is_completed "$i"; then
-            status="✓ "
+            status="✓"
         elif [[ "$i" == "$current" ]]; then
-            status="● "
+            status="●"
         else
-            status="  "
+            status="○"
         fi
-        items+=("${status}[$((i + 1))] ${LESSON_TITLES[$i]}")
+        items+=("${status} [$((i + 1))] ${LESSON_TITLES[$i]}")
     done
-    items+=("")
-    items+=("  [r] Restart from beginning")
-    items+=("  [s] Show status")
-    items+=("  [q] Quit")
+    items+=("─────────────────────────────────")
+    items+=("↺ [r] Restart from beginning")
+    items+=("📊 [s] Show status")
+    items+=("👋 [q] Quit")
 
-    # Show menu with gum
+    # Show menu with gum using Catppuccin colors
     local choice
-    choice=$(printf '%s\n' "${items[@]}" | gum choose --cursor.foreground 212 --selected.foreground 212)
+    choice=$(printf '%s\n' "${items[@]}" | gum choose \
+        --cursor.foreground "$ACFS_ACCENT" \
+        --selected.foreground "$ACFS_SUCCESS" \
+        --header.foreground "$ACFS_PRIMARY" \
+        --header "Select a lesson:")
 
     # Parse choice
     if [[ "$choice" =~ \[([0-9])\] ]]; then
@@ -276,6 +301,9 @@ render_markdown() {
 
     if has_glow; then
         glow -s dark "$file"
+    elif has_gum; then
+        # Use gum format for markdown rendering
+        gum format -t markdown < "$file"
     elif command -v bat &>/dev/null; then
         bat --style=plain --language=markdown "$file"
     else
@@ -298,73 +326,158 @@ show_lesson() {
     local file="${LESSONS_DIR}/${LESSON_FILES[$idx]}"
 
     if [[ ! -f "$file" ]]; then
-        echo -e "${RED}Error: Lesson file not found: $file${NC}"
+        if has_gum; then
+            gum style --foreground "$ACFS_ERROR" "Error: Lesson file not found: $file"
+        else
+            echo -e "${RED}Error: Lesson file not found: $file${NC}"
+        fi
         echo "Please ensure ACFS is properly installed."
         return 1
     fi
 
     clear 2>/dev/null || true
 
-    # Header
-    echo -e "${BOLD}${MAGENTA}Lesson $((idx + 1)): ${LESSON_TITLES[$idx]}${NC}"
-    echo -e "${DIM}─────────────────────────────────────────${NC}"
-    echo ""
+    # Header with step indicator
+    if has_gum; then
+        # Build progress dots
+        local dots=""
+        for ((i = 0; i < 8; i++)); do
+            if is_completed "$i"; then
+                dots+="$(gum style --foreground "$ACFS_SUCCESS" "●") "
+            elif [[ $i -eq $idx ]]; then
+                dots+="$(gum style --foreground "$ACFS_PRIMARY" --bold "●") "
+            else
+                dots+="$(gum style --foreground "$ACFS_MUTED" "○") "
+            fi
+        done
+
+        gum style \
+            --border rounded \
+            --border-foreground "$ACFS_PRIMARY" \
+            --padding "1 2" \
+            --margin "0 0 1 0" \
+            "$(gum style --foreground "$ACFS_ACCENT" "Lesson $((idx + 1)) of 8")
+$dots
+$(gum style --foreground "$ACFS_PINK" --bold "${LESSON_TITLES[$idx]}")"
+    else
+        echo -e "${BOLD}${MAGENTA}Lesson $((idx + 1)): ${LESSON_TITLES[$idx]}${NC}"
+        echo -e "${DIM}─────────────────────────────────────────${NC}"
+        echo ""
+    fi
 
     # Content
     render_markdown "$file"
 
     echo ""
-    echo -e "${DIM}─────────────────────────────────────────${NC}"
 
-    # Navigation
-    local nav_options="[m] Menu"
-    if [[ $idx -gt 0 ]]; then
-        nav_options+="  [p] Previous"
-    fi
-    if [[ $idx -lt 7 ]]; then
-        nav_options+="  [n] Next"
-    fi
-    nav_options+="  [c] Mark complete  [q] Quit"
+    # Navigation with gum
+    if has_gum; then
+        gum style --foreground "$ACFS_MUTED" "─────────────────────────────────────────"
 
-    echo -e "${DIM}$nav_options${NC}"
-    echo ""
+        # Build navigation options
+        local -a nav_items=()
+        nav_items+=("📋 [m] Menu")
+        [[ $idx -gt 0 ]] && nav_items+=("⬅️  [p] Previous")
+        [[ $idx -lt 7 ]] && nav_items+=("➡️  [n] Next")
+        nav_items+=("✅ [c] Mark complete")
+        nav_items+=("👋 [q] Quit")
 
-    while true; do
-        read -rp "$(echo -e "${CYAN}Action:${NC} ")" action
+        local action
+        action=$(printf '%s\n' "${nav_items[@]}" | gum choose \
+            --cursor.foreground "$ACFS_ACCENT" \
+            --selected.foreground "$ACFS_SUCCESS")
+
         case "$action" in
-            m|M) return 0 ;;
-            p|P)
+            *"[m]"*) return 0 ;;
+            *"[p]"*)
                 if [[ $idx -gt 0 ]]; then
                     set_current $((idx - 1))
                     show_lesson $((idx - 1))
                     return $?
                 fi
                 ;;
-            n|N)
+            *"[n]"*)
                 if [[ $idx -lt 7 ]]; then
                     set_current $((idx + 1))
                     show_lesson $((idx + 1))
                     return $?
                 fi
                 ;;
-            c|C)
+            *"[c]"*)
                 mark_completed "$idx"
-                echo -e "${GREEN}Lesson $((idx + 1)) marked complete!${NC}"
+                gum style --foreground "$ACFS_SUCCESS" --bold "✓ Lesson $((idx + 1)) marked complete!"
                 sleep 1
                 if [[ $idx -lt 7 ]]; then
                     show_lesson $((idx + 1))
                     return $?
                 else
-                    echo -e "${GREEN}${BOLD}Congratulations! You've completed all lessons!${NC}"
+                    gum style \
+                        --border double \
+                        --border-foreground "$ACFS_SUCCESS" \
+                        --padding "1 3" \
+                        --align center \
+                        "$(gum style --foreground "$ACFS_SUCCESS" --bold '🎉 Congratulations!')
+$(gum style --foreground "$ACFS_TEAL" "You've completed all lessons!")
+$(gum style --foreground "$ACFS_MUTED" "You're ready to fly!")"
                     sleep 2
                     return 0
                 fi
                 ;;
-            q|Q) exit 0 ;;
-            "") ;;
-            *) echo -e "${YELLOW}Invalid option. Use m/p/n/c/q${NC}" ;;
+            *"[q]"*) exit 0 ;;
         esac
-    done
+    else
+        echo -e "${DIM}─────────────────────────────────────────${NC}"
+
+        # Navigation
+        local nav_options="[m] Menu"
+        if [[ $idx -gt 0 ]]; then
+            nav_options+="  [p] Previous"
+        fi
+        if [[ $idx -lt 7 ]]; then
+            nav_options+="  [n] Next"
+        fi
+        nav_options+="  [c] Mark complete  [q] Quit"
+
+        echo -e "${DIM}$nav_options${NC}"
+        echo ""
+
+        while true; do
+            read -rp "$(echo -e "${CYAN}Action:${NC} ")" action
+            case "$action" in
+                m|M) return 0 ;;
+                p|P)
+                    if [[ $idx -gt 0 ]]; then
+                        set_current $((idx - 1))
+                        show_lesson $((idx - 1))
+                        return $?
+                    fi
+                    ;;
+                n|N)
+                    if [[ $idx -lt 7 ]]; then
+                        set_current $((idx + 1))
+                        show_lesson $((idx + 1))
+                        return $?
+                    fi
+                    ;;
+                c|C)
+                    mark_completed "$idx"
+                    echo -e "${GREEN}Lesson $((idx + 1)) marked complete!${NC}"
+                    sleep 1
+                    if [[ $idx -lt 7 ]]; then
+                        show_lesson $((idx + 1))
+                        return $?
+                    else
+                        echo -e "${GREEN}${BOLD}Congratulations! You've completed all lessons!${NC}"
+                        sleep 2
+                        return 0
+                    fi
+                    ;;
+                q|Q) exit 0 ;;
+                "") ;;
+                *) echo -e "${YELLOW}Invalid option. Use m/p/n/c/q${NC}" ;;
+            esac
+        done
+    fi
 }
 
 # Show completion status
@@ -378,37 +491,91 @@ show_status() {
         fi
     done
 
-    echo -e "${BOLD}Progress: $completed_count/8 lessons completed${NC}"
-    echo ""
+    if has_gum; then
+        # Styled progress display with gum
+        local percent=$((completed_count * 100 / 8))
+        local filled=$((percent / 2))
+        local empty=$((50 - filled))
 
-    # Progress bar
-    local filled=$((completed_count * 5))
-    local empty=$((40 - filled))
-    local i
-    printf '%s' "${GREEN}"
-    for ((i = 0; i < filled; i++)); do printf '█'; done
-    printf '%s' "${DIM}"
-    for ((i = 0; i < empty; i++)); do printf '░'; done
-    printf '%s' "${NC}"
-    echo " $((completed_count * 100 / 8))%"
-    echo ""
+        local bar=""
+        for ((i = 0; i < filled; i++)); do bar+="█"; done
+        for ((i = 0; i < empty; i++)); do bar+="░"; done
 
-    for i in {0..7}; do
-        echo -e "  $(format_lesson "$i")"
-    done
+        gum style \
+            --border rounded \
+            --border-foreground "$ACFS_ACCENT" \
+            --padding "1 2" \
+            --margin "0 0 1 0" \
+            "$(gum style --foreground "$ACFS_PINK" --bold "📊 Progress: $completed_count/8 lessons")
 
-    echo ""
+$(gum style --foreground "$ACFS_PRIMARY" "$bar") $(gum style --foreground "$ACFS_SUCCESS" --bold "$percent%")"
 
-    if [[ $completed_count -eq 8 ]]; then
-        echo -e "${GREEN}${BOLD}All lessons complete! You're ready to fly!${NC}"
+        # Lesson list with styled status
+        echo ""
+        for i in {0..7}; do
+            local status_icon status_color
+            if is_completed "$i"; then
+                status_icon="✓"
+                status_color="$ACFS_SUCCESS"
+            elif [[ "$i" == "$(get_current)" ]]; then
+                status_icon="●"
+                status_color="$ACFS_PRIMARY"
+            else
+                status_icon="○"
+                status_color="$ACFS_MUTED"
+            fi
+            echo "  $(gum style --foreground "$status_color" "$status_icon") $(gum style --foreground "$ACFS_TEAL" "[$((i + 1))]") ${LESSON_TITLES[$i]}"
+        done
+
+        echo ""
+
+        if [[ $completed_count -eq 8 ]]; then
+            gum style \
+                --foreground "$ACFS_SUCCESS" \
+                --bold \
+                "🎉 All lessons complete! You're ready to fly!"
+        else
+            local current
+            current=$(get_current)
+            gum style --foreground "$ACFS_MUTED" "Next up:" \
+            gum style --foreground "$ACFS_PRIMARY" "Lesson $((current + 1)) - ${LESSON_TITLES[$current]}"
+        fi
+
+        echo ""
+        gum confirm --affirmative "Continue" --negative "" "Ready to continue?" || true
     else
-        local current
-        current=$(get_current)
-        echo -e "${CYAN}Next up: Lesson $((current + 1)) - ${LESSON_TITLES[$current]}${NC}"
-    fi
+        echo -e "${BOLD}Progress: $completed_count/8 lessons completed${NC}"
+        echo ""
 
-    echo ""
-    read -rp "Press Enter to continue..."
+        # Progress bar
+        local filled=$((completed_count * 5))
+        local empty=$((40 - filled))
+        local i
+        printf '%s' "${GREEN}"
+        for ((i = 0; i < filled; i++)); do printf '█'; done
+        printf '%s' "${DIM}"
+        for ((i = 0; i < empty; i++)); do printf '░'; done
+        printf '%s' "${NC}"
+        echo " $((completed_count * 100 / 8))%"
+        echo ""
+
+        for i in {0..7}; do
+            echo -e "  $(format_lesson "$i")"
+        done
+
+        echo ""
+
+        if [[ $completed_count -eq 8 ]]; then
+            echo -e "${GREEN}${BOLD}All lessons complete! You're ready to fly!${NC}"
+        else
+            local current
+            current=$(get_current)
+            echo -e "${CYAN}Next up: Lesson $((current + 1)) - ${LESSON_TITLES[$current]}${NC}"
+        fi
+
+        echo ""
+        read -rp "Press Enter to continue..."
+    fi
 }
 
 # ─────────────────────────────────────────────────────────────────────────────

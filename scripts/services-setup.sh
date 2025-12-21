@@ -236,26 +236,48 @@ print_status_table() {
 
     local services=("claude" "codex" "gemini" "vercel" "supabase" "wrangler" "postgres")
     local labels=("Claude Code" "Codex CLI" "Gemini CLI" "Vercel" "Supabase" "Cloudflare" "PostgreSQL")
+    local categories=("AI Agent" "AI Agent" "AI Agent" "Cloud" "Cloud" "Cloud" "Database")
 
-    for i in "${!services[@]}"; do
-        local svc="${services[$i]}"
-        local label="${labels[$i]}"
-        local status="${SERVICE_STATUS[$svc]:-unknown}"
-        local icon
-        icon=$(get_status_icon "$status")
+    if [[ "$HAS_GUM" == "true" ]]; then
+        # Use gum table for beautiful display
+        local table_data="Service,Category,Status,Action\n"
+        for i in "${!services[@]}"; do
+            local svc="${services[$i]}"
+            local label="${labels[$i]}"
+            local category="${categories[$i]}"
+            local status="${SERVICE_STATUS[$svc]:-unknown}"
+            local icon
+            icon=$(get_status_icon "$status")
+            local action=""
+            case "$status" in
+                configured) action="Ready" ;;
+                running|installed) action="Needs setup" ;;
+                not_installed) action="Install first" ;;
+                *) action="Check" ;;
+            esac
+            table_data+="$icon $label,$category,$status,$action\n"
+        done
 
-        if [[ "$HAS_GUM" == "true" ]]; then
-            local color
-            color=$(get_status_color "$status")
-            gum style --foreground "$color" "  $icon $label: $status"
-        else
+        echo -e "$table_data" | gum table \
+            --border.foreground "$ACFS_MUTED" \
+            --cell.foreground "$ACFS_TEXT" \
+            --header.foreground "$ACFS_PRIMARY"
+    else
+        # Fallback to simple display
+        for i in "${!services[@]}"; do
+            local svc="${services[$i]}"
+            local label="${labels[$i]}"
+            local status="${SERVICE_STATUS[$svc]:-unknown}"
+            local icon
+            icon=$(get_status_icon "$status")
+
             case "$status" in
                 configured) echo -e "\033[32m  $icon $label: $status\033[0m" ;;
                 running|installed) echo -e "\033[33m  $icon $label: $status\033[0m" ;;
                 *) echo -e "\033[31m  $icon $label: $status\033[0m" ;;
             esac
-        fi
-    done
+        done
+    fi
     echo ""
 }
 
@@ -521,57 +543,167 @@ show_menu() {
     print_status_table
 
     echo ""
-    local choice
-    choice=$(gum_choose "What would you like to configure?" \
-        "1. Claude Code (AI coding assistant)" \
-        "2. Codex CLI (OpenAI coding assistant)" \
-        "3. Gemini CLI (Google AI assistant)" \
-        "4. Vercel (deployment platform)" \
-        "5. Supabase (database platform)" \
-        "6. Cloudflare Wrangler (edge platform)" \
-        "7. PostgreSQL (check database)" \
-        "8. Configure ALL unconfigured services" \
-        "9. Refresh status" \
-        "0. Exit")
 
-    case "$choice" in
-        *"Claude"*)    setup_claude ;;
-        *"Codex"*)     setup_codex ;;
-        *"Gemini"*)    setup_gemini ;;
-        *"Vercel"*)    setup_vercel ;;
-        *"Supabase"*)  setup_supabase ;;
-        *"Cloudflare"*) setup_wrangler ;;
-        *"PostgreSQL"*) setup_postgres ;;
-        *"ALL"*)       setup_all_unconfigured ;;
-        *"Refresh"*)   return 0 ;;  # Will loop back and refresh
-        *"Exit"*)      exit 0 ;;
-        *)             return 0 ;;
-    esac
+    if [[ "$HAS_GUM" == "true" ]]; then
+        # Build menu items with status indicators
+        local -a items=()
+        local services=("claude" "codex" "gemini" "vercel" "supabase" "wrangler" "postgres")
+        local labels=("Claude Code" "Codex CLI" "Gemini CLI" "Vercel" "Supabase" "Cloudflare Wrangler" "PostgreSQL")
+        local descs=("AI coding assistant" "OpenAI assistant" "Google AI assistant" "Deployment platform" "Database platform" "Edge platform" "Local database")
+
+        for i in "${!services[@]}"; do
+            local svc="${services[$i]}"
+            local label="${labels[$i]}"
+            local desc="${descs[$i]}"
+            local status="${SERVICE_STATUS[$svc]:-unknown}"
+            local icon
+            icon=$(get_status_icon "$status")
+            items+=("$icon $label - $desc [$status]")
+        done
+
+        items+=("─────────────────────────────────────────")
+        items+=("⚡ Configure ALL unconfigured services")
+        items+=("🔄 Refresh status")
+        items+=("👋 Exit")
+
+        # Use gum filter for fuzzy search
+        gum style --foreground "$ACFS_PRIMARY" --bold "What would you like to configure?"
+        echo ""
+        local choice
+        choice=$(printf '%s\n' "${items[@]}" | gum filter \
+            --indicator.foreground "$ACFS_ACCENT" \
+            --match.foreground "$ACFS_SUCCESS" \
+            --placeholder "Type to filter services..." \
+            --height 12)
+
+        case "$choice" in
+            *"Claude"*)    setup_claude ;;
+            *"Codex"*)     setup_codex ;;
+            *"Gemini"*)    setup_gemini ;;
+            *"Vercel"*)    setup_vercel ;;
+            *"Supabase"*)  setup_supabase ;;
+            *"Wrangler"*)  setup_wrangler ;;
+            *"PostgreSQL"*) setup_postgres ;;
+            *"ALL"*)       setup_all_unconfigured ;;
+            *"Refresh"*)   return 0 ;;
+            *"Exit"*)      exit 0 ;;
+            *)             return 0 ;;
+        esac
+    else
+        local choice
+        choice=$(gum_choose "What would you like to configure?" \
+            "1. Claude Code (AI coding assistant)" \
+            "2. Codex CLI (OpenAI coding assistant)" \
+            "3. Gemini CLI (Google AI assistant)" \
+            "4. Vercel (deployment platform)" \
+            "5. Supabase (database platform)" \
+            "6. Cloudflare Wrangler (edge platform)" \
+            "7. PostgreSQL (check database)" \
+            "8. Configure ALL unconfigured services" \
+            "9. Refresh status" \
+            "0. Exit")
+
+        case "$choice" in
+            *"Claude"*)    setup_claude ;;
+            *"Codex"*)     setup_codex ;;
+            *"Gemini"*)    setup_gemini ;;
+            *"Vercel"*)    setup_vercel ;;
+            *"Supabase"*)  setup_supabase ;;
+            *"Cloudflare"*) setup_wrangler ;;
+            *"PostgreSQL"*) setup_postgres ;;
+            *"ALL"*)       setup_all_unconfigured ;;
+            *"Refresh"*)   return 0 ;;
+            *"Exit"*)      exit 0 ;;
+            *)             return 0 ;;
+        esac
+    fi
 }
 
 setup_all_unconfigured() {
     gum_section "Configuring All Unconfigured Services"
 
     local services=("claude" "codex" "gemini" "vercel" "supabase" "wrangler")
+    local labels=("Claude Code" "Codex CLI" "Gemini CLI" "Vercel" "Supabase" "Cloudflare Wrangler")
     local setup_funcs=("setup_claude" "setup_codex" "setup_gemini" "setup_vercel" "setup_supabase" "setup_wrangler")
 
+    # Count services needing setup
+    local needs_setup=0
+    for i in "${!services[@]}"; do
+        local status="${SERVICE_STATUS[${services[$i]}]:-unknown}"
+        if [[ "$status" != "configured" && "$status" != "not_installed" ]]; then
+            ((needs_setup++))
+        fi
+    done
+
+    if [[ $needs_setup -eq 0 ]]; then
+        if [[ "$HAS_GUM" == "true" ]]; then
+            gum style \
+                --foreground "$ACFS_SUCCESS" \
+                --bold \
+                "✓ All services are already configured!"
+        else
+            gum_success "All services are already configured!"
+        fi
+        return 0
+    fi
+
+    local current=0
     for i in "${!services[@]}"; do
         local svc="${services[$i]}"
+        local label="${labels[$i]}"
         local func="${setup_funcs[$i]}"
         local status="${SERVICE_STATUS[$svc]:-unknown}"
 
         if [[ "$status" != "configured" && "$status" != "not_installed" ]]; then
+            ((current++))
             echo ""
-            gum_step "$((i+1))" "${#services[@]}" "Setting up $svc..."
+
+            if [[ "$HAS_GUM" == "true" ]]; then
+                # Show wizard-style progress
+                local dots=""
+                for ((j = 1; j <= needs_setup; j++)); do
+                    if [[ $j -lt $current ]]; then
+                        dots+="$(gum style --foreground "$ACFS_SUCCESS" "●") "
+                    elif [[ $j -eq $current ]]; then
+                        dots+="$(gum style --foreground "$ACFS_PRIMARY" --bold "●") "
+                    else
+                        dots+="$(gum style --foreground "$ACFS_MUTED" "○") "
+                    fi
+                done
+
+                gum style \
+                    --border rounded \
+                    --border-foreground "$ACFS_PRIMARY" \
+                    --padding "0 2" \
+                    "$(gum style --foreground "$ACFS_ACCENT" "Service $current of $needs_setup") $dots
+$(gum style --foreground "$ACFS_PINK" --bold "Setting up $label...")"
+            else
+                gum_step "$current" "$needs_setup" "Setting up $label..."
+            fi
+
             $func || true
         fi
     done
 
     # Always check postgres
+    echo ""
+    if [[ "$HAS_GUM" == "true" ]]; then
+        gum style --foreground "$ACFS_MUTED" "Checking PostgreSQL status..."
+    fi
     setup_postgres
 
     echo ""
-    gum_success "Setup complete!"
+    if [[ "$HAS_GUM" == "true" ]]; then
+        gum style \
+            --border double \
+            --border-foreground "$ACFS_SUCCESS" \
+            --padding "1 2" \
+            --align center \
+            "$(gum style --foreground "$ACFS_SUCCESS" --bold '✓ Setup Complete!')
+$(gum style --foreground "$ACFS_TEAL" "All available services have been configured")"
+    else
+        gum_success "Setup complete!"
+    fi
 }
 
 # ============================================================
@@ -579,16 +711,37 @@ setup_all_unconfigured() {
 # ============================================================
 
 main() {
-    print_compact_banner
+    if [[ "$HAS_GUM" == "true" ]]; then
+        # Styled header
+        echo ""
+        gum style \
+            --border double \
+            --border-foreground "$ACFS_ACCENT" \
+            --padding "1 3" \
+            --margin "0 0 1 0" \
+            "$(gum style --foreground "$ACFS_PINK" --bold '⚙️  ACFS Services Setup')
+$(gum style --foreground "$ACFS_MUTED" "Configure AI agents and cloud services")"
 
-    echo ""
-    gum_detail "Post-install services configuration for user: $TARGET_USER"
+        gum style --foreground "$ACFS_TEAL" "  User: $TARGET_USER"
+    else
+        print_compact_banner
+        echo ""
+        gum_detail "Post-install services configuration for user: $TARGET_USER"
+    fi
     echo ""
 
     # Check if bun is available
     if [[ ! -x "$BUN_BIN" ]]; then
-        gum_error "Bun not found at $BUN_BIN"
-        gum_error "Run the main ACFS installer first!"
+        if [[ "$HAS_GUM" == "true" ]]; then
+            gum style \
+                --foreground "$ACFS_ERROR" \
+                --bold \
+                "✖ Bun not found at $BUN_BIN"
+            gum style --foreground "$ACFS_ERROR" "  Run the main ACFS installer first!"
+        else
+            gum_error "Bun not found at $BUN_BIN"
+            gum_error "Run the main ACFS installer first!"
+        fi
         exit 1
     fi
 
@@ -596,8 +749,17 @@ main() {
     while true; do
         show_menu
         echo ""
-        if ! gum_confirm "Configure more services?"; then
-            break
+        if [[ "$HAS_GUM" == "true" ]]; then
+            if ! gum confirm \
+                --prompt.foreground "$ACFS_PRIMARY" \
+                --selected.foreground "$ACFS_SUCCESS" \
+                "Configure more services?"; then
+                break
+            fi
+        else
+            if ! gum_confirm "Configure more services?"; then
+                break
+            fi
         fi
     done
 
@@ -605,7 +767,25 @@ main() {
     check_all_status
     print_status_table
 
-    gum_completion "Services Setup Complete" "Your ACFS environment is configured!
+    if [[ "$HAS_GUM" == "true" ]]; then
+        gum style \
+            --border double \
+            --border-foreground "$ACFS_SUCCESS" \
+            --padding "1 3" \
+            --margin "1 0" \
+            --align center \
+            "$(gum style --foreground "$ACFS_SUCCESS" --bold '🎉 Services Setup Complete!')
+
+$(gum style --foreground "$ACFS_TEAL" 'Your ACFS environment is configured!')
+
+$(gum style --foreground "$ACFS_MUTED" 'Next steps:')
+$(gum style --foreground "$ACFS_PRIMARY" '  • Start coding with:') $(gum style --foreground "$ACFS_ACCENT" 'cc') $(gum style --foreground "$ACFS_MUTED" '(Claude Code)')
+$(gum style --foreground "$ACFS_PRIMARY" '  • Create a project:') $(gum style --foreground "$ACFS_ACCENT" 'ntm new myproject')
+$(gum style --foreground "$ACFS_PRIMARY" '  • Run the onboarding:') $(gum style --foreground "$ACFS_ACCENT" 'onboard')
+
+$(gum style --foreground "$ACFS_PINK" --bold '  Happy coding! 🚀')"
+    else
+        gum_completion "Services Setup Complete" "Your ACFS environment is configured!
 
 Next steps:
   • Start coding with: cc (Claude Code)
@@ -613,6 +793,7 @@ Next steps:
   • Run the onboarding: onboard
 
 Happy coding!"
+    fi
 }
 
 # Run main if not sourced
