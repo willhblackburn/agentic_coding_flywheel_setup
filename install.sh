@@ -919,19 +919,27 @@ install_languages() {
     fi
 
     # uv (install as target user)
-    if [[ ! -f "$TARGET_HOME/.local/bin/uv" ]]; then
+    if [[ -x "$TARGET_HOME/.local/bin/uv" ]] || [[ -x "$TARGET_HOME/.cargo/bin/uv" ]] || command -v uv &>/dev/null; then
+        log_detail "uv already installed"
+    else
         log_detail "Installing uv for $TARGET_USER"
         acfs_run_verified_upstream_script_as_target "uv" "sh"
     fi
 
     # Atuin (install as target user)
-    if [[ ! -d "$TARGET_HOME/.atuin" ]]; then
+    # Check both the data directory and the binary location
+    if [[ -d "$TARGET_HOME/.atuin" ]] || [[ -x "$TARGET_HOME/.atuin/bin/atuin" ]] || command -v atuin &>/dev/null; then
+        log_detail "Atuin already installed"
+    else
         log_detail "Installing Atuin for $TARGET_USER"
         acfs_run_verified_upstream_script_as_target "atuin" "sh"
     fi
 
     # Zoxide (install as target user)
-    if [[ ! -f "$TARGET_HOME/.local/bin/zoxide" ]]; then
+    # Check multiple possible locations
+    if [[ -x "$TARGET_HOME/.local/bin/zoxide" ]] || [[ -x "/usr/local/bin/zoxide" ]] || command -v zoxide &>/dev/null; then
+        log_detail "Zoxide already installed"
+    else
         log_detail "Installing Zoxide for $TARGET_USER"
         acfs_run_verified_upstream_script_as_target "zoxide" "sh"
     fi
@@ -1094,40 +1102,82 @@ install_cloud_db() {
 # ============================================================
 # Phase 8: Dicklesworthstone stack
 # ============================================================
+
+# Helper: check if a binary exists in common install locations
+binary_installed() {
+    local name="$1"
+    [[ -x "$TARGET_HOME/.local/bin/$name" ]] || \
+    [[ -x "/usr/local/bin/$name" ]] || \
+    [[ -x "$TARGET_HOME/.bun/bin/$name" ]] || \
+    [[ -x "$TARGET_HOME/.cargo/bin/$name" ]]
+}
+
 install_stack() {
     log_step "9/10" "Installing Dicklesworthstone stack..."
 
     # NTM (Named Tmux Manager)
-    log_detail "Installing NTM"
-    acfs_run_verified_upstream_script_as_target "ntm" "bash" || log_warn "NTM installation may have failed"
+    if binary_installed "ntm"; then
+        log_detail "NTM already installed"
+    else
+        log_detail "Installing NTM"
+        acfs_run_verified_upstream_script_as_target "ntm" "bash" || log_warn "NTM installation may have failed"
+    fi
 
-    # MCP Agent Mail
-    log_detail "Installing MCP Agent Mail"
-    acfs_run_verified_upstream_script_as_target "mcp_agent_mail" "bash" --yes || log_warn "MCP Agent Mail installation may have failed"
+    # MCP Agent Mail (check for mcp-agent-mail stub or mcp_agent_mail directory)
+    if binary_installed "mcp-agent-mail" || [[ -d "$TARGET_HOME/mcp_agent_mail" ]]; then
+        log_detail "MCP Agent Mail already installed"
+    else
+        log_detail "Installing MCP Agent Mail"
+        acfs_run_verified_upstream_script_as_target "mcp_agent_mail" "bash" --yes || log_warn "MCP Agent Mail installation may have failed"
+    fi
 
     # Ultimate Bug Scanner
-    log_detail "Installing Ultimate Bug Scanner"
-    acfs_run_verified_upstream_script_as_target "ubs" "bash" --easy-mode || log_warn "UBS installation may have failed"
+    if binary_installed "ubs"; then
+        log_detail "Ultimate Bug Scanner already installed"
+    else
+        log_detail "Installing Ultimate Bug Scanner"
+        acfs_run_verified_upstream_script_as_target "ubs" "bash" --easy-mode || log_warn "UBS installation may have failed"
+    fi
 
     # Beads Viewer
-    log_detail "Installing Beads Viewer"
-    acfs_run_verified_upstream_script_as_target "bv" "bash" || log_warn "Beads Viewer installation may have failed"
+    if binary_installed "bv"; then
+        log_detail "Beads Viewer already installed"
+    else
+        log_detail "Installing Beads Viewer"
+        acfs_run_verified_upstream_script_as_target "bv" "bash" || log_warn "Beads Viewer installation may have failed"
+    fi
 
     # CASS (Coding Agent Session Search)
-    log_detail "Installing CASS"
-    acfs_run_verified_upstream_script_as_target "cass" "bash" --easy-mode --verify || log_warn "CASS installation may have failed"
+    if binary_installed "cass"; then
+        log_detail "CASS already installed"
+    else
+        log_detail "Installing CASS"
+        acfs_run_verified_upstream_script_as_target "cass" "bash" --easy-mode --verify || log_warn "CASS installation may have failed"
+    fi
 
     # CASS Memory System
-    log_detail "Installing CASS Memory System"
-    acfs_run_verified_upstream_script_as_target "cm" "bash" --easy-mode --verify || log_warn "CM installation may have failed"
+    if binary_installed "cm"; then
+        log_detail "CASS Memory System already installed"
+    else
+        log_detail "Installing CASS Memory System"
+        acfs_run_verified_upstream_script_as_target "cm" "bash" --easy-mode --verify || log_warn "CM installation may have failed"
+    fi
 
     # CAAM (Coding Agent Account Manager)
-    log_detail "Installing CAAM"
-    acfs_run_verified_upstream_script_as_target "caam" "bash" || log_warn "CAAM installation may have failed"
+    if binary_installed "caam"; then
+        log_detail "CAAM already installed"
+    else
+        log_detail "Installing CAAM"
+        acfs_run_verified_upstream_script_as_target "caam" "bash" || log_warn "CAAM installation may have failed"
+    fi
 
     # SLB (Simultaneous Launch Button)
-    log_detail "Installing SLB"
-    acfs_run_verified_upstream_script_as_target "slb" "bash" || log_warn "SLB installation may have failed"
+    if binary_installed "slb"; then
+        log_detail "SLB already installed"
+    else
+        log_detail "Installing SLB"
+        acfs_run_verified_upstream_script_as_target "slb" "bash" || log_warn "SLB installation may have failed"
+    fi
 
     log_success "Dicklesworthstone stack installed"
 }
