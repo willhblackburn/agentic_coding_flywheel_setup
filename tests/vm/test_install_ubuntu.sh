@@ -130,6 +130,7 @@ run_one() {
       su - ubuntu -c "zsh -ic '\''codex --version >/dev/null'\''"
       su - ubuntu -c "zsh -ic '\''gemini --version >/dev/null'\''"
       su - ubuntu -c "zsh -ic '\''claude --version >/dev/null'\''"
+      su - ubuntu -c "bash -lc '\''/repo/tests/vm/resume_checks.sh'\''"
     '
 }
 

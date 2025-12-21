@@ -28,7 +28,7 @@ export default function ReconnectUbuntuPage() {
   // Analytics tracking for this wizard step
   const { markComplete } = useWizardAnalytics({
     step: "reconnect_ubuntu",
-    stepNumber: 8,
+    stepNumber: 9,
     stepTitle: "Reconnect as Ubuntu",
   });
 
@@ -42,14 +42,14 @@ export default function ReconnectUbuntuPage() {
 
   const handleContinue = useCallback(() => {
     markComplete();
-    markStepComplete(8);
+    markStepComplete(9);
     setIsNavigating(true);
     router.push(withCurrentSearch("/wizard/status-check"));
   }, [router, markComplete]);
 
   const handleSkip = useCallback(() => {
     markComplete({ skipped: true });
-    markStepComplete(8);
+    markStepComplete(9);
     setIsNavigating(true);
     router.push(withCurrentSearch("/wizard/status-check"));
   }, [router, markComplete]);

@@ -158,7 +158,7 @@ export default function SSHConnectPage() {
     markComplete();
     markStepComplete(6);
     setIsNavigating(true);
-    router.push(withCurrentSearch("/wizard/run-installer"));
+    router.push(withCurrentSearch("/wizard/preflight-check"));
   }, [router, markComplete]);
 
   if (!ready || !vpsIP || !os) {

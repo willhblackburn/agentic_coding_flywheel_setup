@@ -1,7 +1,7 @@
 /**
  * Wizard Steps Configuration
  *
- * Defines the 10 steps of the Agent Flywheel setup wizard.
+ * Defines the 11 steps of the Agent Flywheel setup wizard.
  * Each step guides beginners from "I have a laptop" to "fully configured VPS".
  * Uses TanStack Query for React state management with localStorage persistence.
  */
@@ -60,24 +60,30 @@ export const WIZARD_STEPS: WizardStep[] = [
   },
   {
     id: 7,
+    title: "Pre-Flight Check",
+    description: "Verify your VPS is ready before installing",
+    slug: "preflight-check",
+  },
+  {
+    id: 8,
     title: "Run Installer",
     description: "Paste and run the one-liner to install everything",
     slug: "run-installer",
   },
   {
-    id: 8,
+    id: 9,
     title: "Reconnect as Ubuntu",
     description: "Switch from root to your ubuntu user",
     slug: "reconnect-ubuntu",
   },
   {
-    id: 9,
+    id: 10,
     title: "Status Check",
     description: "Verify everything installed correctly",
     slug: "status-check",
   },
   {
-    id: 10,
+    id: 11,
     title: "Launch Onboarding",
     description: "Start the interactive tutorial",
     slug: "launch-onboarding",

@@ -80,14 +80,14 @@ export default function LaunchOnboardingPage() {
   // Analytics tracking for this wizard step
   const { markComplete } = useWizardAnalytics({
     step: "launch_onboarding",
-    stepNumber: 10,
+    stepNumber: 11,
     stepTitle: "Launch Onboarding",
   });
 
   // Mark all steps complete on reaching this page
   useEffect(() => {
     markComplete({ wizard_completed: true });
-    markStepComplete(10);
+    markStepComplete(11);
     // Mark all steps as completed
     const allSteps = Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1);
     setCompletedSteps(allSteps);

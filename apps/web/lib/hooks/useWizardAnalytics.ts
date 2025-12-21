@@ -27,7 +27,7 @@ export function useWizardAnalytics({
   step,
   stepNumber,
   stepTitle,
-  totalSteps = 10,
+  totalSteps = 11,
 }: UseWizardAnalyticsOptions) {
   const startTime = useRef<number>(0);
   const hasTrackedView = useRef<boolean>(false);
