@@ -14,8 +14,8 @@ import { test, expect } from "@playwright/test";
  * - Step 5 (Create VPS): "Continue to SSH"
  * - Step 6 (SSH Connect): "I'm connected, continue"
  * - Step 7 (Run Installer): "I finished installing"
- * - Step 8 (Reconnect Ubuntu): "Continue"
- * - Step 9 (Status Check): "Continue"
+ * - Step 8 (Reconnect Ubuntu): "I'm connected as ubuntu"
+ * - Step 9 (Status Check): "Everything looks good!"
  */
 
 test.describe("Wizard Flow", () => {
@@ -429,11 +429,11 @@ test.describe("Complete Wizard Flow Integration", () => {
     await expect(page).toHaveURL("/wizard/reconnect-ubuntu");
 
     // Step 8: Reconnect Ubuntu
-    await page.click('button:has-text("Continue")');
+    await page.click('button:has-text("connected as ubuntu")');
     await expect(page).toHaveURL("/wizard/status-check");
 
     // Step 9: Status Check
-    await page.click('button:has-text("Continue")');
+    await page.click('button:has-text("Everything looks good")');
     await expect(page).toHaveURL("/wizard/launch-onboarding");
 
     // Step 10: Launch Onboarding - Final step!

@@ -163,7 +163,7 @@ const FEATURES = [
   {
     icon: <Cpu className="h-6 w-6" />,
     title: "Three AI Agents",
-    description: "Claude Code, Codex CLI, and Gemini CLI — all configured with optimal settings for coding.",
+    description: "Claude Code, Codex CLI, and Gemini CLI, all configured with optimal settings for coding.",
     gradient: "bg-[oklch(0.7_0.2_330)]",
   },
   {
@@ -175,13 +175,13 @@ const FEATURES = [
   {
     icon: <Zap className="h-6 w-6" />,
     title: "Vibe Mode",
-    description: "Passwordless sudo, dangerous flags enabled — maximum velocity for throwaway VPS environments.",
+    description: "Passwordless sudo with dangerous flags enabled for maximum velocity on throwaway VPS environments.",
     gradient: "bg-[oklch(0.78_0.16_75)]",
   },
   {
     icon: <Terminal className="h-6 w-6" />,
     title: "Modern Shell",
-    description: "zsh + oh-my-zsh + powerlevel10k with lsd, atuin, fzf, zoxide — developer UX perfected.",
+    description: "zsh + oh-my-zsh + powerlevel10k with lsd, atuin, fzf, and zoxide; developer UX perfected.",
     gradient: "bg-[oklch(0.65_0.18_290)]",
   },
   {
@@ -440,7 +440,7 @@ function AboutSection() {
             <p>
               I&apos;m{" "}
               <a
-                href="https://x.com/doodlestein"
+                href="https://jeffreyemanuel.com/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="font-medium text-primary hover:underline"
@@ -454,8 +454,8 @@ function AboutSection() {
 
             <p>
               I wanted <strong className="text-foreground">one resource</strong> I could point
-              people to that would help them &quot;from soup to nuts&quot; in getting set up —
-              even if they have almost no computer expertise. Just motivation and desire.
+              people to that would help them &quot;from soup to nuts&quot; in getting set up;
+              even if they have almost no computer expertise, just motivation and desire.
             </p>
 
             <p>
