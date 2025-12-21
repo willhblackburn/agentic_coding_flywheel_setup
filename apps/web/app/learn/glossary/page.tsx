@@ -1,44 +1,128 @@
 "use client";
 
-import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Search, BookOpen, ArrowLeft, Lightbulb, ChevronRight } from "lucide-react";
+import { useState, useMemo } from "react";
+import {
+  ArrowLeft,
+  BookOpen,
+  ChevronRight,
+  Home,
+  Lightbulb,
+  Search,
+} from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { getAllTerms, type JargonTerm } from "@/lib/jargon";
 
-/**
- * Group terms by their first letter
- */
-function groupByFirstLetter(terms: JargonTerm[]): Map<string, JargonTerm[]> {
-  const groups = new Map<string, JargonTerm[]>();
+// Group terms by first letter
+function groupByLetter(terms: JargonTerm[]): Record<string, JargonTerm[]> {
+  const groups: Record<string, JargonTerm[]> = {};
 
   for (const term of terms) {
-    const firstLetter = term.term.charAt(0).toUpperCase();
-    const existing = groups.get(firstLetter) || [];
-    existing.push(term);
-    groups.set(firstLetter, existing);
+    const firstChar = term.term[0].toUpperCase();
+    // Group numbers and special chars under #
+    const key = /[A-Z]/.test(firstChar) ? firstChar : "#";
+    if (!groups[key]) {
+      groups[key] = [];
+    }
+    groups[key].push(term);
   }
 
-  // Sort within each group
-  for (const [letter, terms] of groups) {
-    groups.set(letter, terms.sort((a, b) => a.term.localeCompare(b.term)));
+  // Sort terms within each group
+  for (const key of Object.keys(groups)) {
+    groups[key].sort((a, b) => a.term.localeCompare(b.term));
   }
 
   return groups;
 }
 
-/**
- * Get a URL-safe id from a term
- */
-function getTermId(term: string): string {
-  return term.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+function TermCard({ term }: { term: JargonTerm }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  return (
+    <div
+      id={term.term.toLowerCase().replace(/\s+/g, "-")}
+      className="scroll-mt-24"
+    >
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="group w-full text-left"
+      >
+        <div className="rounded-lg border border-border/50 bg-card/50 p-4 transition-colors hover:border-primary/30 hover:bg-card/80">
+          <div className="flex items-start gap-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Lightbulb className="h-4 w-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-foreground">{term.term}</h3>
+                <ChevronRight
+                  className={`h-4 w-4 text-muted-foreground transition-transform ${
+                    isExpanded ? "rotate-90" : ""
+                  }`}
+                />
+              </div>
+              <p className="text-sm text-muted-foreground line-clamp-2">
+                {term.short}
+              </p>
+            </div>
+          </div>
+
+          {isExpanded && (
+            <div className="mt-4 space-y-3 border-t border-border/30 pt-4">
+              <p className="text-sm leading-relaxed text-foreground">
+                {term.long}
+              </p>
+
+              {term.analogy && (
+                <div className="rounded-lg bg-primary/5 p-3">
+                  <p className="text-xs font-medium text-primary mb-1">
+                    Think of it like...
+                  </p>
+                  <p className="text-sm text-muted-foreground">{term.analogy}</p>
+                </div>
+              )}
+
+              {term.why && (
+                <div className="rounded-lg bg-emerald-500/5 p-3">
+                  <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400 mb-1">
+                    Why we use it
+                  </p>
+                  <p className="text-sm text-muted-foreground">{term.why}</p>
+                </div>
+              )}
+
+              {term.related && term.related.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">
+                    Related terms
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {term.related.map((rel) => (
+                      <a
+                        key={rel}
+                        href={`#${rel.toLowerCase().replace(/\s+/g, "-")}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="rounded-full border border-border/50 bg-muted/50 px-2.5 py-1 text-xs font-medium text-muted-foreground hover:border-primary/30 hover:text-primary"
+                      >
+                        {rel}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </button>
+    </div>
+  );
 }
 
 export default function GlossaryPage() {
   const [searchQuery, setSearchQuery] = useState("");
+
   const allTerms = useMemo(() => getAllTerms(), []);
 
-  // Filter terms based on search
   const filteredTerms = useMemo(() => {
     if (!searchQuery.trim()) return allTerms;
 
@@ -51,15 +135,17 @@ export default function GlossaryPage() {
     );
   }, [allTerms, searchQuery]);
 
-  // Group by first letter
   const groupedTerms = useMemo(
-    () => groupByFirstLetter(filteredTerms),
+    () => groupByLetter(filteredTerms),
     [filteredTerms]
   );
 
-  // Get sorted letters
   const sortedLetters = useMemo(
-    () => Array.from(groupedTerms.keys()).sort(),
+    () => Object.keys(groupedTerms).sort((a, b) => {
+      if (a === "#") return -1;
+      if (b === "#") return 1;
+      return a.localeCompare(b);
+    }),
     [groupedTerms]
   );
 
@@ -79,194 +165,138 @@ export default function GlossaryPage() {
             <ArrowLeft className="h-4 w-4" />
             <span className="text-sm">Learning Hub</span>
           </Link>
+          <Link
+            href="/"
+            className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <Home className="h-4 w-4" />
+            <span className="text-sm">Home</span>
+          </Link>
         </div>
 
-        {/* Hero section */}
-        <div className="mb-8">
-          <div className="mb-4 flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 shadow-lg shadow-primary/20">
-              <BookOpen className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-                Glossary
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                {allTerms.length} terms defined
-              </p>
+        {/* Hero */}
+        <div className="mb-10 text-center">
+          <div className="mb-4 flex justify-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-amber-500/20">
+              <BookOpen className="h-8 w-8 text-white" />
             </div>
           </div>
-          <p className="text-muted-foreground">
-            Technical terms explained in plain language. Click any term to learn more.
+          <h1 className="mb-3 text-3xl font-bold tracking-tight md:text-4xl">
+            Glossary
+          </h1>
+          <p className="mx-auto max-w-xl text-lg text-muted-foreground">
+            Plain-language definitions for all the technical terms used
+            throughout the setup wizard and learning hub.
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {allTerms.length} terms defined
           </p>
         </div>
 
         {/* Search */}
         <div className="relative mb-8">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
             placeholder="Search terms..."
             value={searchQuery}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
-            className="w-full rounded-lg border border-border/50 bg-muted/30 px-4 py-2.5 pl-10 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            onChange={(e) => setSearchQuery(e.target.value)}
+            aria-label="Search glossary terms"
+            className="w-full rounded-xl border border-border/50 bg-card/50 py-3 pl-12 pr-4 text-foreground placeholder:text-muted-foreground focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
 
         {/* Alphabet quick nav */}
-        {!searchQuery && (
-          <div className="mb-8 flex flex-wrap gap-1">
-            {sortedLetters.map((letter) => (
-              <a
-                key={letter}
-                href={`#letter-${letter}`}
-                className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted/50 text-sm font-mono font-medium text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
-              >
-                {letter}
-              </a>
-            ))}
-          </div>
-        )}
+        <div className="mb-8 flex flex-wrap justify-center gap-1">
+          {sortedLetters.map((letter) => (
+            <a
+              key={letter}
+              href={`#letter-${letter}`}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-sm font-mono font-medium text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+            >
+              {letter}
+            </a>
+          ))}
+        </div>
 
-        {/* Results count when searching */}
-        {searchQuery && (
-          <div className="mb-6 text-sm text-muted-foreground">
-            Found {filteredTerms.length} term{filteredTerms.length !== 1 ? "s" : ""} matching &quot;{searchQuery}&quot;
-          </div>
-        )}
-
-        {/* Terms list */}
-        {sortedLetters.length === 0 ? (
-          <Card className="p-8 text-center">
-            <p className="text-muted-foreground">No terms found matching your search.</p>
-          </Card>
-        ) : (
-          <div className="space-y-8">
-            {sortedLetters.map((letter) => (
-              <section key={letter} id={`letter-${letter}`}>
-                {/* Letter header */}
+        {/* Terms by letter */}
+        <div className="space-y-8">
+          {sortedLetters.length > 0 ? (
+            sortedLetters.map((letter) => (
+              <div key={letter} id={`letter-${letter}`} className="scroll-mt-8">
                 <div className="sticky top-0 z-10 mb-4 flex items-center gap-3 bg-background/80 py-2 backdrop-blur-sm">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 font-mono text-xl font-bold text-primary">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 font-mono text-lg font-bold text-primary">
                     {letter}
                   </div>
                   <div className="h-px flex-1 bg-border/50" />
+                  <span className="text-xs text-muted-foreground">
+                    {groupedTerms[letter].length} term
+                    {groupedTerms[letter].length !== 1 ? "s" : ""}
+                  </span>
                 </div>
-
-                {/* Terms in this letter group */}
                 <div className="space-y-3">
-                  {groupedTerms.get(letter)?.map((term) => (
+                  {groupedTerms[letter].map((term) => (
                     <TermCard key={term.term} term={term} />
                   ))}
                 </div>
-              </section>
-            ))}
-          </div>
-        )}
+              </div>
+            ))
+          ) : (
+            <div className="py-12 text-center">
+              <Search className="mx-auto mb-4 h-12 w-12 text-muted-foreground/50" />
+              <p className="text-muted-foreground">
+                No terms match your search.
+              </p>
+            </div>
+          )}
+        </div>
 
-        {/* Back to top */}
-        <div className="mt-12 text-center">
-          <a
-            href="#"
-            className="text-sm text-muted-foreground hover:text-primary"
-          >
-            Back to top ↑
-          </a>
+        {/* Related links */}
+        <Card className="mt-10 p-6">
+          <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+            <BookOpen className="h-5 w-5 text-primary" />
+            Related References
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Link
+              href="/learn/agent-commands"
+              className="flex items-center gap-3 rounded-lg border border-border/50 p-4 transition-colors hover:border-primary/40 hover:bg-primary/5"
+            >
+              <Lightbulb className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <div className="font-medium">Agent Commands</div>
+                <div className="text-sm text-muted-foreground">
+                  Claude, Codex, Gemini reference
+                </div>
+              </div>
+              <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground" />
+            </Link>
+            <Link
+              href="/learn/ntm-palette"
+              className="flex items-center gap-3 rounded-lg border border-border/50 p-4 transition-colors hover:border-primary/40 hover:bg-primary/5"
+            >
+              <Lightbulb className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <div className="font-medium">NTM Commands</div>
+                <div className="text-sm text-muted-foreground">
+                  Session management reference
+                </div>
+              </div>
+              <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground" />
+            </Link>
+          </div>
+        </Card>
+
+        {/* Footer */}
+        <div className="mt-12 text-center text-sm text-muted-foreground">
+          <p>
+            Back to{" "}
+            <Link href="/learn" className="text-primary hover:underline">
+              Learning Hub &rarr;
+            </Link>
+          </p>
         </div>
       </div>
     </div>
-  );
-}
-
-/**
- * Individual term card component
- */
-function TermCard({ term }: { term: JargonTerm }) {
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  return (
-    <Card
-      id={getTermId(term.term)}
-      className="overflow-hidden transition-all hover:border-primary/30"
-    >
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="flex w-full items-start gap-4 p-4 text-left"
-      >
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <Lightbulb className="h-4 w-4" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <h3 className="font-semibold text-foreground">{term.term}</h3>
-          <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
-            {term.short}
-          </p>
-        </div>
-        <ChevronRight
-          className={`mt-1 h-5 w-5 shrink-0 text-muted-foreground transition-transform ${
-            isExpanded ? "rotate-90" : ""
-          }`}
-        />
-      </button>
-
-      {isExpanded && (
-        <div className="border-t border-border/50 bg-muted/30 px-4 py-4">
-          <div className="space-y-4 pl-12">
-            {/* Full explanation */}
-            <div>
-              <h4 className="mb-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                What is it?
-              </h4>
-              <p className="text-sm leading-relaxed text-foreground">
-                {term.long}
-              </p>
-            </div>
-
-            {/* Analogy */}
-            {term.analogy && (
-              <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
-                <p className="mb-1 text-xs font-bold uppercase tracking-wider text-primary">
-                  Think of it like...
-                </p>
-                <p className="text-sm leading-relaxed text-foreground">
-                  {term.analogy}
-                </p>
-              </div>
-            )}
-
-            {/* Why we use it */}
-            {term.why && (
-              <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
-                <p className="mb-1 text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                  Why we use it
-                </p>
-                <p className="text-sm leading-relaxed text-foreground">
-                  {term.why}
-                </p>
-              </div>
-            )}
-
-            {/* Related terms */}
-            {term.related && term.related.length > 0 && (
-              <div>
-                <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Related Terms
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                  {term.related.map((relatedTerm) => (
-                    <a
-                      key={relatedTerm}
-                      href={`#${getTermId(relatedTerm)}`}
-                      className="rounded-full border border-border/50 bg-muted/50 px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
-                    >
-                      {relatedTerm}
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </Card>
   );
 }
