@@ -265,6 +265,22 @@ test_no_deps_excludes_dependencies() {
     test_fail "$name"
 }
 
+test_no_deps_prints_warning() {
+    local name="--no-deps prints prominent warning"
+    reset_selection
+    ONLY_MODULES=("agents.claude")
+    NO_DEPS=true
+
+    # Capture stderr to check for warning
+    local output
+    output=$(acfs_resolve_selection 2>&1)
+    if [[ "$output" == *"WARNING"* ]] && [[ "$output" == *"no-deps"* || "$output" == *"dependency"* ]]; then
+        test_pass "$name"
+    else
+        test_fail "$name" "Expected warning about --no-deps"
+    fi
+}
+
 # ============================================================
 # Test Cases: Effective Plan Arrays
 # ============================================================
@@ -361,6 +377,148 @@ test_plan_respects_dependency_order() {
 }
 
 # ============================================================
+# Test Cases: Plan Determinism (--print-plan stability)
+# ============================================================
+
+test_plan_is_deterministic() {
+    local name="Plan output is deterministic (stable across calls)"
+    reset_selection
+    ONLY_MODULES=("stack.mcp_agent_mail")
+
+    # Run selection twice
+    local plan1 plan2
+    if acfs_resolve_selection 2>/dev/null; then
+        plan1="${ACFS_EFFECTIVE_PLAN[*]}"
+    else
+        test_fail "$name" "First selection failed"
+        return
+    fi
+
+    reset_selection
+    ONLY_MODULES=("stack.mcp_agent_mail")
+    if acfs_resolve_selection 2>/dev/null; then
+        plan2="${ACFS_EFFECTIVE_PLAN[*]}"
+    else
+        test_fail "$name" "Second selection failed"
+        return
+    fi
+
+    if [[ "$plan1" == "$plan2" ]]; then
+        test_pass "$name"
+    else
+        test_fail "$name" "Plans differ: '$plan1' vs '$plan2'"
+    fi
+}
+
+test_plan_does_not_mutate_state() {
+    local name="Selection does not mutate global state (idempotent)"
+    reset_selection
+    ONLY_MODULES=("lang.bun")
+
+    # Run once
+    acfs_resolve_selection 2>/dev/null || true
+    local count1="${#ACFS_EFFECTIVE_PLAN[@]}"
+
+    # Run again without reset - should produce same result
+    acfs_resolve_selection 2>/dev/null || true
+    local count2="${#ACFS_EFFECTIVE_PLAN[@]}"
+
+    if [[ "$count1" == "$count2" ]]; then
+        test_pass "$name"
+    else
+        test_fail "$name" "Plan counts differ: $count1 vs $count2"
+    fi
+}
+
+# ============================================================
+# Test Cases: Legacy Flag Mapping (mjt.5.5)
+# ============================================================
+
+test_legacy_skip_postgres() {
+    local name="--skip-postgres maps to SKIP_MODULES"
+    reset_selection
+    SKIP_POSTGRES=true
+
+    acfs_apply_legacy_skips
+
+    local found=false
+    for module in "${SKIP_MODULES[@]}"; do
+        if [[ "$module" == "db.postgres18" ]]; then
+            found=true
+            break
+        fi
+    done
+
+    if [[ "$found" == "true" ]]; then
+        test_pass "$name"
+    else
+        test_fail "$name" "db.postgres18 not in SKIP_MODULES"
+    fi
+}
+
+test_legacy_skip_vault() {
+    local name="--skip-vault maps to SKIP_MODULES"
+    reset_selection
+    SKIP_VAULT=true
+
+    acfs_apply_legacy_skips
+
+    local found=false
+    for module in "${SKIP_MODULES[@]}"; do
+        if [[ "$module" == "tools.vault" ]]; then
+            found=true
+            break
+        fi
+    done
+
+    if [[ "$found" == "true" ]]; then
+        test_pass "$name"
+    else
+        test_fail "$name" "tools.vault not in SKIP_MODULES"
+    fi
+}
+
+test_legacy_skip_cloud() {
+    local name="--skip-cloud maps to multiple cloud modules"
+    reset_selection
+    SKIP_CLOUD=true
+
+    acfs_apply_legacy_skips
+
+    local found_wrangler=false found_supabase=false found_vercel=false
+    for module in "${SKIP_MODULES[@]}"; do
+        case "$module" in
+            "cloud.wrangler") found_wrangler=true ;;
+            "cloud.supabase") found_supabase=true ;;
+            "cloud.vercel") found_vercel=true ;;
+        esac
+    done
+
+    if [[ "$found_wrangler" == "true" && "$found_supabase" == "true" && "$found_vercel" == "true" ]]; then
+        test_pass "$name"
+    else
+        test_fail "$name" "Missing cloud modules in SKIP_MODULES"
+    fi
+}
+
+test_legacy_flags_affect_selection() {
+    local name="Legacy flags integrate with selection engine"
+    reset_selection
+    SKIP_VAULT=true
+
+    acfs_apply_legacy_skips
+
+    if acfs_resolve_selection 2>/dev/null; then
+        # tools.vault should be excluded
+        if ! should_run_module "tools.vault"; then
+            test_pass "$name"
+            return
+        fi
+    fi
+    test_fail "$name" "tools.vault should be excluded by legacy flag"
+}
+
+# ============================================================
 # Test Cases: should_run_module Helper
 # ============================================================
 
@@ -422,6 +580,7 @@ test_skip_unknown_module_fails
 
 # --no-deps tests
 test_no_deps_excludes_dependencies
+test_no_deps_prints_warning
 
 # Effective plan tests
 test_effective_plan_populated
@@ -431,6 +590,16 @@ test_exclude_reason_tracked
 
 # Plan order tests
 test_plan_respects_dependency_order
+
+# Plan determinism tests (--print-plan stability)
+test_plan_is_deterministic
+test_plan_does_not_mutate_state
+
+# Legacy flag mapping tests (mjt.5.5)
+test_legacy_skip_postgres
+test_legacy_skip_vault
+test_legacy_skip_cloud
+test_legacy_flags_affect_selection
 
 # should_run_module tests
 test_should_run_module_true
