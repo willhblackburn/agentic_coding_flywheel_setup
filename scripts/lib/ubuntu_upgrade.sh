@@ -1096,7 +1096,7 @@ ubuntu_emergency_cleanup() {
 
     # Report remaining space
     local available
-    available=$(df -h / | awk 'NR==2 {print $4}')
+    available=$(df -hP / | awk 'NR==2 {print $4}')
     log_detail "Available space after cleanup: $available"
 }
 
