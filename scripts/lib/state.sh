@@ -542,6 +542,265 @@ state_get_failed_phase() {
 }
 
 # ============================================================
+# State Validation
+# ============================================================
+# Validates state files to handle corruption and incompatibility.
+# Related beads: agentic_coding_flywheel_setup-d09
+
+# Validate state file structure and content
+# Usage: state_validate
+# Returns:
+#   0 - Valid state file
+#   1 - File doesn't exist (fresh install)
+#   2 - Corrupted JSON (cannot parse)
+#   3 - Missing required fields
+#   4 - Unknown/future schema version
+#   5 - Legacy v1 schema (needs migration decision)
+state_validate() {
+    local state_file
+    state_file="$(state_get_file)"
+
+    # Case 1: No state file exists - fresh install
+    if [[ ! -f "$state_file" ]]; then
+        return 1
+    fi
+
+    # Case 2: Check if file is empty or unreadable
+    if [[ ! -s "$state_file" ]] || [[ ! -r "$state_file" ]]; then
+        echo "State file is empty or unreadable: $state_file" >&2
+        return 2
+    fi
+
+    # Case 3: Check JSON syntax
+    local content
+    if ! content=$(cat "$state_file" 2>/dev/null); then
+        echo "Cannot read state file: $state_file" >&2
+        return 2
+    fi
+
+    # Basic JSON validation - check for proper structure
+    # (not just matching braces, but actual JSON parse if jq available)
+    if command -v jq &>/dev/null; then
+        if ! echo "$content" | jq empty 2>/dev/null; then
+            echo "Corrupted JSON in state file: $state_file" >&2
+            return 2
+        fi
+
+        # Get schema version
+        local version
+        version=$(echo "$content" | jq -r '.schema_version // empty')
+
+        # Case 5: Legacy v1 (no schema_version or schema_version=1)
+        if [[ -z "$version" ]] || [[ "$version" == "1" ]]; then
+            echo "Legacy v1 state file detected" >&2
+            return 5
+        fi
+
+        # Case 4: Future schema version
+        if [[ "$version" -gt "$ACFS_STATE_SCHEMA_VERSION" ]]; then
+            echo "State file has newer schema (v$version) than supported (v$ACFS_STATE_SCHEMA_VERSION)" >&2
+            return 4
+        fi
+
+        # Case 3: Check required fields for v2
+        local has_version has_mode has_completed
+        has_version=$(echo "$content" | jq -r 'has("version")')
+        has_mode=$(echo "$content" | jq -r 'has("mode")')
+        has_completed=$(echo "$content" | jq -r 'has("completed_phases")')
+
+        if [[ "$has_version" != "true" ]] || [[ "$has_mode" != "true" ]] || [[ "$has_completed" != "true" ]]; then
+            echo "State file missing required fields (version, mode, completed_phases)" >&2
+            return 3
+        fi
+
+        # Validate completed_phases is an array
+        local is_array
+        is_array=$(echo "$content" | jq -r '.completed_phases | type == "array"')
+        if [[ "$is_array" != "true" ]]; then
+            echo "State file has invalid completed_phases (not an array)" >&2
+            return 3
+        fi
+
+    else
+        # Basic fallback without jq - just check for opening/closing braces
+        if [[ ! "$content" =~ ^\{.*\}$ ]]; then
+            echo "State file is not valid JSON (no jq available for detailed check)" >&2
+            return 2
+        fi
+
+        # Check for schema_version field
+        if ! grep -q '"schema_version"' "$state_file"; then
+            echo "Legacy v1 state file detected (no schema_version)" >&2
+            return 5
+        fi
+
+        # Extract version number
+        local version
+        version=$(grep -oP '"schema_version"\s*:\s*\K[0-9]+' "$state_file" || echo "")
+        if [[ -z "$version" ]] || [[ "$version" == "1" ]]; then
+            return 5
+        fi
+        if [[ "$version" -gt "$ACFS_STATE_SCHEMA_VERSION" ]]; then
+            return 4
+        fi
+    fi
+
+    return 0
+}
+
+# Handle invalid state file with user interaction
+# Usage: state_handle_invalid <validation_code>
+# Returns: 0 if handled (fresh start), 1 if should abort
+state_handle_invalid() {
+    local code="$1"
+    local state_file
+    state_file="$(state_get_file)"
+
+    case "$code" in
+        1)
+            # No state file - nothing to handle
+            return 0
+            ;;
+        2)
+            # Corrupted JSON
+            echo ""
+            echo "WARNING: The installation state file is corrupted."
+            echo "File: $state_file"
+            echo ""
+            echo "Options:"
+            echo "  1. Start fresh (backup and remove corrupted file)"
+            echo "  2. Abort and investigate"
+            echo ""
+
+            # In non-interactive mode (YES_MODE), default to fresh start
+            if [[ "${YES_MODE:-false}" == "true" ]]; then
+                echo "Non-interactive mode: starting fresh install"
+                state_backup_and_remove
+                return 0
+            fi
+
+            read -r -p "Start fresh? [Y/n] " response
+            if [[ "$response" =~ ^[Nn] ]]; then
+                return 1
+            fi
+            state_backup_and_remove
+            return 0
+            ;;
+        3)
+            # Missing required fields
+            echo ""
+            echo "WARNING: State file is missing required fields."
+            echo "File: $state_file"
+            echo ""
+            echo "This may be from a very old or manually edited install."
+            echo ""
+
+            if [[ "${YES_MODE:-false}" == "true" ]]; then
+                echo "Non-interactive mode: starting fresh install"
+                state_backup_and_remove
+                return 0
+            fi
+
+            read -r -p "Start fresh install? [Y/n] " response
+            if [[ "$response" =~ ^[Nn] ]]; then
+                return 1
+            fi
+            state_backup_and_remove
+            return 0
+            ;;
+        4)
+            # Future schema version
+            echo ""
+            echo "WARNING: State file uses a newer schema version."
+            echo "File: $state_file"
+            echo ""
+            echo "This ACFS version may be older than the one that created this state."
+            echo "Consider upgrading ACFS or starting fresh."
+            echo ""
+
+            if [[ "${YES_MODE:-false}" == "true" ]]; then
+                echo "Non-interactive mode: starting fresh install"
+                state_backup_and_remove
+                return 0
+            fi
+
+            read -r -p "Start fresh install? [Y/n] " response
+            if [[ "$response" =~ ^[Nn] ]]; then
+                return 1
+            fi
+            state_backup_and_remove
+            return 0
+            ;;
+        5)
+            # Legacy v1 schema
+            echo ""
+            echo "Found state file from previous ACFS version (v1 schema)."
+            echo "File: $state_file"
+            echo ""
+
+            if command -v jq &>/dev/null; then
+                echo "Options:"
+                echo "  1. Migrate state to v2 (preserve progress)"
+                echo "  2. Start fresh (discard previous progress)"
+                echo ""
+
+                if [[ "${YES_MODE:-false}" == "true" ]]; then
+                    echo "Non-interactive mode: migrating to v2"
+                    state_migrate_v1_to_v2
+                    return 0
+                fi
+
+                read -r -p "Migrate existing state? [Y/n] " response
+                if [[ "$response" =~ ^[Nn] ]]; then
+                    state_backup_and_remove
+                else
+                    state_migrate_v1_to_v2
+                fi
+            else
+                echo "jq is required for migration. Starting fresh."
+                state_backup_and_remove
+            fi
+            return 0
+            ;;
+        *)
+            # Unknown code
+            echo "Unknown validation result: $code" >&2
+            return 1
+            ;;
+    esac
+}
+
+# Backup and remove corrupted state file
+# Usage: state_backup_and_remove
+state_backup_and_remove() {
+    local state_file
+    state_file="$(state_get_file)"
+
+    if [[ -f "$state_file" ]]; then
+        local backup_file="${state_file}.backup.$(date +%Y%m%d_%H%M%S)"
+        cp "$state_file" "$backup_file" 2>/dev/null || true
+        echo "Backed up state to: $backup_file"
+        rm -f "$state_file"
+        echo "Removed corrupted state file"
+    fi
+}
+
+# Convenience function to validate and handle state
+# Usage: state_ensure_valid
+# Returns: 0 if state is valid or fresh, 1 if should abort
+state_ensure_valid() {
+    local code
+    state_validate
+    code=$?
+
+    if [[ $code -eq 0 ]]; then
+        return 0  # Valid state
+    fi
+
+    state_handle_invalid "$code"
+}
+
+# ============================================================
 # Backwards Compatibility
 # ============================================================
 

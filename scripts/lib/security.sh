@@ -312,6 +312,270 @@ get_checksum() {
 declare -A LOADED_CHECKSUMS
 
 # ============================================================
+# Checksum Mismatch Batching
+# Related: agentic_coding_flywheel_setup-4jr
+# ============================================================
+
+# Array to collect checksum mismatches during verification phase
+# Format: "tool|url|expected|actual"
+declare -g -a CHECKSUM_MISMATCHES=()
+
+# Record a checksum mismatch for later batched handling
+#
+# Arguments:
+#   $1 - Tool name
+#   $2 - URL
+#   $3 - Expected checksum
+#   $4 - Actual checksum
+#
+record_checksum_mismatch() {
+    local tool="$1"
+    local url="$2"
+    local expected="$3"
+    local actual="$4"
+
+    CHECKSUM_MISMATCHES+=("$tool|$url|$expected|$actual")
+}
+
+# Clear all recorded mismatches
+clear_checksum_mismatches() {
+    CHECKSUM_MISMATCHES=()
+}
+
+# Get count of recorded mismatches
+count_checksum_mismatches() {
+    echo "${#CHECKSUM_MISMATCHES[@]}"
+}
+
+# Check if any mismatches were recorded
+has_checksum_mismatches() {
+    [[ ${#CHECKSUM_MISMATCHES[@]} -gt 0 ]]
+}
+
+# Handle all checksum mismatches with batched prompts
+#
+# Instead of prompting for each mismatch, this function:
+#   1. Collects all mismatches first (via record_checksum_mismatch)
+#   2. Presents ONE decision prompt with P/S/A options
+#   3. Handles non-interactive mode based on tool classification
+#
+# Environment:
+#   ACFS_INTERACTIVE - "true" for interactive, "false" for non-interactive
+#   ACFS_STRICT_MODE - "true" treats all mismatches as critical
+#
+# Returns:
+#   0 - User chose to proceed or skip
+#   1 - User chose to abort (or critical tool mismatch in non-interactive)
+#
+handle_all_checksum_mismatches() {
+    if ! has_checksum_mismatches; then
+        return 0  # No mismatches, all good
+    fi
+
+    local mismatch_count
+    mismatch_count="$(count_checksum_mismatches)"
+
+    # Source tools.sh for CRITICAL vs RECOMMENDED classification
+    local tools_lib="${SECURITY_SCRIPT_DIR}/tools.sh"
+    if [[ -r "$tools_lib" ]]; then
+        # shellcheck source=tools.sh
+        source "$tools_lib"
+    fi
+
+    # Non-interactive mode handling
+    if [[ "${ACFS_INTERACTIVE:-true}" == "false" ]]; then
+        _handle_mismatches_noninteractive
+        return $?
+    fi
+
+    # Interactive mode: display mismatches and prompt
+    echo "" >&2
+    echo -e "${YELLOW}============================================================${NC}" >&2
+    echo -e "${YELLOW}  Checksum Mismatches Detected: $mismatch_count installer(s)${NC}" >&2
+    echo -e "${YELLOW}============================================================${NC}" >&2
+    echo "" >&2
+    echo "The following installers have changed since checksums.yaml was generated:" >&2
+    echo "" >&2
+
+    local has_critical=false
+    local critical_tools=()
+    local recommended_tools=()
+
+    for entry in "${CHECKSUM_MISMATCHES[@]}"; do
+        IFS="|" read -r tool url expected actual <<< "$entry"
+
+        local classification="recommended"
+        if declare -f is_critical_tool &>/dev/null && is_critical_tool "$tool"; then
+            classification="critical"
+            has_critical=true
+            critical_tools+=("$tool")
+        else
+            recommended_tools+=("$tool")
+        fi
+
+        local classification_label
+        if [[ "$classification" == "critical" ]]; then
+            classification_label="${RED}[CRITICAL]${NC}"
+        else
+            classification_label="${YELLOW}[optional]${NC}"
+        fi
+
+        echo -e "  $classification_label $tool:" >&2
+        echo "      Expected: ${expected:0:16}..." >&2
+        echo "      Actual:   ${actual:0:16}..." >&2
+        echo "      URL: $url" >&2
+        echo "" >&2
+    done
+
+    echo "This usually means upstream scripts were updated (normal)." >&2
+    echo "In rare cases, it could indicate a security issue." >&2
+    echo "" >&2
+
+    if [[ "$has_critical" == "true" ]]; then
+        echo -e "${RED}WARNING: ${#critical_tools[@]} CRITICAL tool(s) affected.${NC}" >&2
+        echo "Skipping critical tools may break the installation." >&2
+        echo "" >&2
+    fi
+
+    echo "Options:" >&2
+    echo "  [P] Proceed with new versions (update checksums.yaml later)" >&2
+    echo "  [S] Skip mismatched tools, install everything else" >&2
+    echo "  [A] Abort installation" >&2
+    echo "" >&2
+
+    local choice
+    read -r -p "Choice [P/s/a]: " choice < /dev/tty
+
+    case "${choice,,}" in
+        s|skip)
+            # Add all mismatched tools to SKIPPED_TOOLS
+            for entry in "${CHECKSUM_MISMATCHES[@]}"; do
+                IFS="|" read -r tool _ _ _ <<< "$entry"
+                if declare -f handle_tool_failure &>/dev/null; then
+                    # Use tool classification logic
+                    handle_tool_failure "$tool" "Checksum mismatch (user chose to skip)" || return 1
+                else
+                    # Fallback: just track skipped
+                    SKIPPED_TOOLS+=("$tool")
+                fi
+            done
+            clear_checksum_mismatches
+            return 0
+            ;;
+        a|abort)
+            echo -e "${RED}Installation aborted by user.${NC}" >&2
+            return 1
+            ;;
+        p|proceed|"")
+            # Proceed with new versions (default)
+            echo -e "${GREEN}Proceeding with updated installers...${NC}" >&2
+            clear_checksum_mismatches
+            return 0
+            ;;
+        *)
+            echo "Invalid choice. Aborting for safety." >&2
+            return 1
+            ;;
+    esac
+}
+
+# Internal: Handle mismatches in non-interactive mode
+#
+# Rules:
+#   - CRITICAL tool mismatch → abort (cannot proceed safely)
+#   - RECOMMENDED tool mismatch → auto-skip with warning
+#
+_handle_mismatches_noninteractive() {
+    local has_critical=false
+    local critical_names=()
+
+    echo "" >&2
+    echo -e "${YELLOW}Checksum mismatches detected (non-interactive mode):${NC}" >&2
+    echo "" >&2
+
+    for entry in "${CHECKSUM_MISMATCHES[@]}"; do
+        IFS="|" read -r tool url expected actual <<< "$entry"
+
+        local is_crit=false
+        if declare -f is_critical_tool &>/dev/null && is_critical_tool "$tool"; then
+            is_crit=true
+            has_critical=true
+            critical_names+=("$tool")
+        fi
+
+        if [[ "$is_crit" == "true" ]]; then
+            echo -e "  ${RED}[CRITICAL]${NC} $tool - checksum mismatch" >&2
+        else
+            echo -e "  ${YELLOW}[skipping]${NC} $tool - checksum mismatch" >&2
+            # Auto-skip recommended tools
+            if declare -f handle_tool_failure &>/dev/null; then
+                handle_tool_failure "$tool" "Checksum mismatch (auto-skipped in non-interactive mode)"
+            else
+                SKIPPED_TOOLS+=("$tool")
+            fi
+        fi
+    done
+
+    echo "" >&2
+
+    # Abort if any critical tools have mismatches
+    if [[ "$has_critical" == "true" ]]; then
+        echo -e "${RED}ABORTING: Critical tools have checksum mismatches: ${critical_names[*]}${NC}" >&2
+        echo "Cannot proceed safely without verified critical installers." >&2
+        echo "Options:" >&2
+        echo "  - Update checksums.yaml after verifying upstream changes" >&2
+        echo "  - Run interactively to review and choose action" >&2
+        return 1
+    fi
+
+    # Only recommended tools mismatched, continue
+    echo -e "${YELLOW}Non-critical tools skipped. Proceeding with installation.${NC}" >&2
+    clear_checksum_mismatches
+    return 0
+}
+
+# Check installer and record mismatch if found
+#
+# Arguments:
+#   $1 - Tool name
+#   $2 - URL (optional, uses KNOWN_INSTALLERS if not provided)
+#   $3 - Expected checksum (optional, uses LOADED_CHECKSUMS if not provided)
+#
+# Returns:
+#   0 - Checksum matches
+#   1 - Checksum mismatch (recorded for later batched handling)
+#   2 - Fetch error
+#
+check_installer_checksum() {
+    local tool="$1"
+    local url="${2:-${KNOWN_INSTALLERS[$tool]:-}}"
+    local expected="${3:-${LOADED_CHECKSUMS[$tool]:-}}"
+
+    if [[ -z "$url" ]]; then
+        echo "Warning: No URL for tool $tool" >&2
+        return 2
+    fi
+
+    if [[ -z "$expected" ]]; then
+        echo "Warning: No expected checksum for $tool" >&2
+        return 2
+    fi
+
+    local actual
+    actual=$(fetch_checksum "$url" 2>/dev/null) || {
+        echo "Warning: Failed to fetch $tool from $url" >&2
+        return 2
+    }
+
+    if [[ "$actual" != "$expected" ]]; then
+        record_checksum_mismatch "$tool" "$url" "$expected" "$actual"
+        return 1
+    fi
+
+    return 0
+}
+
+# ============================================================
 # Verification Report
 # ============================================================
 
