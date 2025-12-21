@@ -2833,6 +2833,11 @@ main() {
     init_target_paths
     ensure_ubuntu
 
+    # Ensure base dependencies (like jq) are installed before upgrade logic
+    # This is safe to run on old Ubuntu versions and ensures jq is available
+    # for state management during the upgrade process.
+    ensure_base_deps
+
     # ============================================================
     # Ubuntu Auto-Upgrade Phase (nb4)
     # ============================================================
@@ -2882,8 +2887,6 @@ main() {
         # Fallback: use original confirm_or_exit
         confirm_or_exit
     fi
-
-    ensure_base_deps
 
     if [[ "$DRY_RUN" != "true" ]]; then
         # Execute phases with state tracking (mjt.5.8)

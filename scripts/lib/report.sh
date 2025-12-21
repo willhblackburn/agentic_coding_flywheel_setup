@@ -296,11 +296,23 @@ report_failure_json() {
             }')
     else
         # Manual JSON without jq (basic escaping)
-        local escaped_error="${error//\"/\\\"}"
-        local escaped_output="${error_output//\"/\\\"}"
+        local escaped_error="${error//\\/\\\\}"
+        escaped_error="${escaped_error//\"/\\\"}"
+        escaped_error="${escaped_error//$'\n'/\\n}"
+        escaped_error="${escaped_error//$'\r'/\\r}"
+        escaped_error="${escaped_error//$'\t'/\\t}"
+
+        local escaped_output="${error_output//\\/\\\\}"
+        escaped_output="${escaped_output//\"/\\\"}"
         escaped_output="${escaped_output//$'\n'/\\n}"
-        local escaped_fix="${suggested_fix//\"/\\\"}"
+        escaped_output="${escaped_output//$'\r'/\\r}"
+        escaped_output="${escaped_output//$'\t'/\\t}"
+
+        local escaped_fix="${suggested_fix//\\/\\\\}"
+        escaped_fix="${escaped_fix//\"/\\\"}"
         escaped_fix="${escaped_fix//$'\n'/\\n}"
+        escaped_fix="${escaped_fix//$'\r'/\\r}"
+        escaped_fix="${escaped_fix//$'\t'/\\t}"
 
         json_entry=$(cat <<EOF
 {"type":"failure","timestamp":"$(date -Iseconds)","version":"${ACFS_VERSION:-0.1.0}","mode":"${MODE:-unknown}","phase":{"number":${phase_num},"total":${total_phases},"id":"${phase}","name":"${phase_name}"},"failure":{"step":"${step}","error":"${escaped_error}","output":"${escaped_output}","suggested_fix":"${escaped_fix}"}}
