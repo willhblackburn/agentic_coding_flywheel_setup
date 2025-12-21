@@ -1260,7 +1260,368 @@ Execution must be deterministic and explainable:
   - why a module is included (default, only, dependency of X)
   - why a module is excluded (skip, disabled by default, filtered by phase)
 - `--no-deps` must print a prominent warning because it is easy to foot-gun.
-- Errors should be crisp and actionable (“Remove --skip base.system or add --no-deps if debugging”).
+- Errors should be crisp and actionable ("Remove --skip base.system or add --no-deps if debugging").
+
+---
+
+## Golden Path CLI Stories (Phase 0 Spec)
+
+These stories define the expected behavior for common use cases, ensuring the CLI matches user mental models.
+
+### Story 1: Beginner Default Install (Wizard User)
+
+**Persona:** First-time user following the website wizard.
+
+**Command:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/.../install.sh | bash -s -- --yes --mode vibe
+```
+
+**Expected behavior:**
+1. Bootstrap downloads repo archive, validates scripts (`bash -n`)
+2. Selection starts with all `enabled_by_default: true` modules
+3. All phases (1-10) execute in order
+4. `--yes` skips confirmation prompts
+5. `--mode vibe` configures passwordless sudo, full agent permissions
+6. No manual intervention required
+7. Smoke test runs automatically at end
+
+**Why this works:**
+- The manifest defines sensible defaults (critical + recommended tools)
+- PostgreSQL, Vault, Cloud CLIs are opt-out (`enabled_by_default: false`)
+- Dependency closure is automatic; no orphan modules
+
+**What the user sees:**
+```
+[1/10] Checking base dependencies...
+[2/10] Normalizing user account...
+...
+[10/10] Finalizing installation...
+ ACFS installation complete!
+```
+
+---
+
+### Story 2: Install Only Bun (with automatic dependencies)
+
+**Persona:** Developer who only needs Bun runtime.
+
+**Command:**
+```bash
+./install.sh --only lang.bun
+```
+
+**Expected behavior:**
+1. Selection starts with `lang.bun` only
+2. Dependency closure adds `base.system` (apt packages for curl, git, build tools)
+3. Final plan: `base.system` -> `lang.bun`
+4. Phases 1 and 6 execute, others skipped
+5. Total install completes in ~2 minutes
+
+**What the user sees (with `--print-plan`):**
+```bash
+./install.sh --only lang.bun --print-plan
+```
+```
+Effective plan (2 modules):
+  [ok] base.system (phase 1) [dependency of lang.bun]
+  [ok] lang.bun (phase 6) [explicitly requested]
+
+Skipped phases: 2, 3, 4, 5, 7, 8, 9, 10
+```
+
+---
+
+### Story 3: Install Agents Only (most common customization)
+
+**Persona:** User who has base system set up, just wants the coding agents.
+
+**Command:**
+```bash
+./install.sh --only agents.claude,agents.codex,agents.gemini
+```
+
+**Expected behavior:**
+1. Selection includes the three agents
+2. Dependency closure adds: `base.system`, `lang.bun` (required by codex/gemini)
+3. Final plan: `base.system` -> `lang.bun` -> `agents.claude` -> `agents.codex` -> `agents.gemini`
+4. Already-installed dependencies (idempotent check) are skipped quickly
+
+**Why this matters:**
+- Users upgrading from an older ACFS version
+- CI/CD pipelines that only need agents
+- Testing agent installs in isolation
+
+---
+
+### Story 4: Skip PostgreSQL (common wizard override)
+
+**Persona:** Wizard user who unchecks PostgreSQL in the website UI.
+
+**Command:**
+```bash
+curl -fsSL ... | bash -s -- --yes --mode vibe --skip-postgres
+```
+
+**Expected behavior:**
+1. Legacy flag `--skip-postgres` maps to `--skip db.postgres18`
+2. Selection computes default set minus `db.postgres18`
+3. No dependency conflict (postgres is not a dependency of other modules)
+4. Installation proceeds with all other modules
+
+**Legacy flag mapping (in `parse_args`):**
+```bash
+--skip-postgres) SKIP_MODULES+=("db.postgres18") ;;
+--skip-vault)    SKIP_MODULES+=("tools.vault") ;;
+--skip-cloud)    SKIP_MODULES+=("cloud.wrangler" "cloud.supabase" "cloud.vercel") ;;
+```
+
+---
+
+### Story 5: Phase-based Filtering (CI optimization)
+
+**Persona:** CI pipeline that needs only language runtimes.
+
+**Command:**
+```bash
+./install.sh --only-phase 6
+```
+
+**Expected behavior:**
+1. Selection includes only modules in phase 6: `lang.bun`, `lang.uv`, `lang.rust`, `lang.go`, `tools.atuin`, `tools.zoxide`, `tools.ast_grep`
+2. Dependency closure adds phase 1 (`base.system`) automatically
+3. Final plan respects dependency order
+
+**Use case:**
+- Faster CI/CD builds
+- Testing specific installer phases
+- Modular VPS provisioning
+
+---
+
+## Expert Debugging Stories (Phase 0 Spec)
+
+These stories document the `--no-deps` and `--print-plan` flags for advanced troubleshooting.
+
+### Story D1: Inspect the Plan Without Executing
+
+**Command:**
+```bash
+./install.sh --print-plan
+```
+
+**Output:**
+```
+ACFS Installation Plan
+======================
+Mode: vibe
+Effective modules: 47
+Phases: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+
+Phase 1 (base):
+  [ok] base.system [default]
+
+Phase 2 (users):
+  [ok] users.ubuntu [default] (orchestration-only)
+
+Phase 3 (filesystem):
+  [ok] base.filesystem [default]
+
+Phase 4 (shell):
+  [ok] shell.zsh [default]
+
+Phase 5 (cli):
+  [ok] cli.modern [default]
+
+Phase 6 (lang):
+  [ok] lang.bun [default]
+  [ok] lang.uv [default]
+  [ok] lang.rust [default]
+  [ok] lang.go [default]
+  [ok] tools.atuin [default]
+  [ok] tools.zoxide [default]
+  [ok] tools.ast_grep [default]
+
+Phase 7 (agents):
+  [ok] agents.claude [default]
+  [ok] agents.codex [default]
+  [ok] agents.gemini [default]
+
+Phase 8 (cloud):
+  [skip] db.postgres18 [disabled by default]
+  [skip] tools.vault [disabled by default]
+  [skip] cloud.wrangler [disabled by default]
+  [skip] cloud.supabase [disabled by default]
+  [skip] cloud.vercel [disabled by default]
+
+Phase 9 (stack):
+  [ok] stack.ntm [default]
+  [ok] stack.mcp_agent_mail [default]
+  [ok] stack.ultimate_bug_scanner [default]
+  [ok] stack.beads_viewer [default]
+  [ok] stack.cass [default]
+  [ok] stack.cm [default]
+  [ok] stack.caam [default]
+  [ok] stack.slb [default]
+
+Phase 10 (acfs):
+  [ok] acfs.onboard [default]
+  [ok] acfs.doctor [default]
+
+Legend: [ok] will install, [skip] skipped, [reason]
+```
+
+**Key insight:** `--print-plan` shows exactly what will happen before any changes are made.
+
+---
+
+### Story D2: Force Install Without Dependencies (Expert-Only)
+
+**Command:**
+```bash
+./install.sh --only lang.bun --no-deps
+```
+
+**Output:**
+```
+WARNING: --no-deps disables automatic dependency expansion.
+WARNING: Module lang.bun depends on: base.system
+WARNING: These dependencies will NOT be installed automatically.
+WARNING: Use --print-plan to verify the execution plan.
+
+Effective plan (1 module):
+  [ok] lang.bun (phase 6) [explicitly requested]
+
+Proceed? [y/N]
+```
+
+**Use case:**
+- Debugging dependency graph issues
+- Testing module install in isolation (assumes deps already present)
+- Understanding what a module actually installs
+
+**Guardrails:**
+- Prominent warning with dependency list
+- Requires explicit confirmation (even with `--yes` in interactive terminals)
+- `--print-plan` recommended before proceeding
+
+---
+
+### Story D3: Skip a Required Dependency (Error Case)
+
+**Command:**
+```bash
+./install.sh --only agents.codex --skip lang.bun
+```
+
+**Output:**
+```
+ERROR: Cannot skip lang.bun
+
+agents.codex depends on lang.bun.
+Skipping a required dependency would leave the installation in a broken state.
+
+Options:
+  1. Remove --skip lang.bun to allow dependency installation
+  2. Add --no-deps if you know lang.bun is already installed
+  3. Skip agents.codex instead (--skip agents.codex)
+
+For debugging: ./install.sh --only agents.codex --print-plan
+```
+
+**Why fail-fast matters:**
+- Silent broken installs are worse than errors
+- User gets actionable guidance
+- Error names the exact dependency edge
+
+---
+
+### Story D4: List All Available Modules
+
+**Command:**
+```bash
+./install.sh --list-modules
+```
+
+**Output:**
+```
+ACFS Modules (from acfs.manifest.yaml)
+======================================
+
+ID                           Phase  Category  Tags                      Default
+---------------------------  -----  --------  ------------------------  -------
+base.system                  1      base      critical                  [ok]
+base.filesystem              3      base      critical                  [ok]
+users.ubuntu                 2      users     orchestration             [ok]
+shell.zsh                    4      shell     shell-ux, critical        [ok]
+cli.modern                   5      cli       cli-modern                [ok]
+lang.bun                     6      lang      runtime, critical         [ok]
+lang.uv                      6      lang      runtime                   [ok]
+lang.rust                    6      lang      runtime                   [ok]
+lang.go                      6      lang      runtime                   [ok]
+tools.atuin                  6      tools     shell-ux                  [ok]
+tools.zoxide                 6      tools     shell-ux                  [ok]
+tools.ast_grep               6      tools     cli-modern                [ok]
+agents.claude                7      agents    agent                     [ok]
+agents.codex                 7      agents    agent                     [ok]
+agents.gemini                7      agents    agent                     [ok]
+db.postgres18                8      cloud     database, optional        [skip]
+tools.vault                  8      cloud     secrets, optional         [skip]
+cloud.wrangler               8      cloud     cloud, optional           [skip]
+cloud.supabase               8      cloud     cloud, optional           [skip]
+cloud.vercel                 8      cloud     cloud, optional           [skip]
+stack.ntm                    9      stack     agent                     [ok]
+stack.mcp_agent_mail         9      stack     agent                     [ok]
+stack.ultimate_bug_scanner   9      stack     agent                     [ok]
+stack.beads_viewer           9      stack     agent                     [ok]
+stack.cass                   9      stack     agent                     [ok]
+stack.cm                     9      stack     agent                     [ok]
+stack.caam                   9      stack     agent                     [ok]
+stack.slb                    9      stack     agent                     [ok]
+acfs.onboard                 10     acfs      orchestration             [ok]
+acfs.doctor                  10     acfs      orchestration             [ok]
+
+Total: 30 modules (25 enabled by default, 5 opt-in)
+
+Filtering:
+  --only <id1,id2,...>     Install specific modules + dependencies
+  --only-phase <n,...>     Install all modules in phases
+  --skip <id1,id2,...>     Skip specific modules
+  --no-deps                Disable automatic dependency expansion
+```
+
+---
+
+### Story D5: Combined Dry-Run Debugging
+
+**Command:**
+```bash
+./install.sh --dry-run --only lang.bun,agents.claude --print-plan
+```
+
+**Output:**
+```
+Effective plan (3 modules):
+  [ok] base.system (phase 1) [dependency of lang.bun]
+  [ok] lang.bun (phase 6) [explicitly requested]
+  [ok] agents.claude (phase 7) [explicitly requested]
+
+[DRY-RUN] Would execute:
+  Phase 1: base.system
+    - sudo apt-get update -y
+    - sudo apt-get install -y curl git ca-certificates ...
+  Phase 6: lang.bun
+    - acfs_run_verified_upstream_script_as_target bun bash
+  Phase 7: agents.claude
+    - acfs_run_verified_upstream_script_as_target claude bash
+
+No changes made (dry-run mode).
+```
+
+**Why `--dry-run` with `--print-plan` is powerful:**
+- Shows both the selection logic AND the commands
+- Safe way to verify behavior before production runs
+- CI pipeline validation
 
 ---
 
