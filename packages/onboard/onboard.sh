@@ -24,9 +24,9 @@ VERSION="0.1.0"
 
 # Source gum_ui library if available for consistent theming
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [[ -f "$SCRIPT_DIR/../scripts/lib/gum_ui.sh" ]]; then
+if [[ -f "$SCRIPT_DIR/../../scripts/lib/gum_ui.sh" ]]; then
     # shellcheck disable=SC1091
-    source "$SCRIPT_DIR/../scripts/lib/gum_ui.sh"
+    source "$SCRIPT_DIR/../../scripts/lib/gum_ui.sh"
 elif [[ -f "$HOME/.acfs/scripts/lib/gum_ui.sh" ]]; then
     # shellcheck disable=SC1091
     source "$HOME/.acfs/scripts/lib/gum_ui.sh"
@@ -537,8 +537,7 @@ $(gum style --foreground "$ACFS_PRIMARY" "$bar") $(gum style --foreground "$ACFS
         else
             local current
             current=$(get_current)
-            gum style --foreground "$ACFS_MUTED" "Next up:" \
-            gum style --foreground "$ACFS_PRIMARY" "Lesson $((current + 1)) - ${LESSON_TITLES[$current]}"
+            echo "$(gum style --foreground "$ACFS_MUTED" "Next up:") $(gum style --foreground "$ACFS_PRIMARY" "Lesson $((current + 1)) - ${LESSON_TITLES[$current]}")"
         fi
 
         echo ""
