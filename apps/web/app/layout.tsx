@@ -22,7 +22,7 @@ const instrumentSans = Instrument_Sans({
 export const metadata: Metadata = {
   title: "ACFS - Agentic Coding Flywheel Setup",
   description:
-    "Transform a fresh Ubuntu VPS into a fully-configured agentic coding environment with Claude, Codex, and Gemini in 30 minutes.",
+    "Transform a fresh cloud server into a fully-configured agentic coding environment. Claude Code, OpenAI Codex, Google Gemini: all pre-configured with 30+ modern developer tools. All totally free and open-source.",
   keywords: [
     "VPS setup",
     "AI coding",

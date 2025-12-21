@@ -469,9 +469,9 @@ export default function HomePage() {
                 className="mb-8 max-w-xl text-lg leading-relaxed text-muted-foreground"
                 variants={fadeUp}
               >
-                Transform a fresh Ubuntu VPS into a fully-configured agentic coding
-                environment. Claude, Codex, Gemini — all pre-configured with 30+ modern
-                developer tools.
+                Transform a fresh cloud server into a fully-configured agentic coding
+                environment. Claude Code, OpenAI Codex, Google Gemini: all pre-configured
+                with 30+ modern developer tools. All totally free and open-source.
               </motion.p>
 
               {/* CTA Buttons */}
