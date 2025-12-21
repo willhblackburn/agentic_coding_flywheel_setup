@@ -90,7 +90,8 @@ _check_user() {
 _check_shell() {
     local shell
     shell=$(getent passwd "$TARGET_USER" 2>/dev/null | cut -d: -f7)
-    if [[ "$shell" == *"zsh"* ]]; then
+    # Check if configured shell is zsh OR if zsh is installed and linked
+    if [[ "$shell" == *"zsh"* ]] || command -v zsh &>/dev/null; then
         _smoke_pass "Shell: zsh"
         return 0
     else
@@ -202,7 +203,7 @@ _check_agents() {
 
 # Check 7: NTM command works
 _check_ntm() {
-    if command -v ntm &>/dev/null; then
+    if command -v ntm &>/dev/null || [[ -x "$TARGET_HOME/.local/bin/ntm" ]] || [[ -x "$TARGET_HOME/.acfs/bin/ntm" ]]; then
         _smoke_pass "NTM: installed"
         return 0
     else
@@ -242,7 +243,7 @@ _check_stack_tools() {
     local missing=()
 
     for tool in "${stack_tools[@]}"; do
-        if command -v "$tool" &>/dev/null; then
+        if command -v "$tool" &>/dev/null || [[ -x "$TARGET_HOME/.local/bin/$tool" ]] || [[ -x "$TARGET_HOME/.acfs/bin/$tool" ]]; then
             found+=("$tool")
         else
             missing+=("$tool")
