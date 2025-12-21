@@ -35,11 +35,11 @@ const PROVIDERS: ProviderInfo[] = [
     url: "https://contabo.com/en/vps/",
     pros: [
       "Best specs-to-price ratio on the market",
-      "Cloud VPS 30 (8 vCPU, 24GB): €14/month or Cloud VPS 40 (12 vCPU, 48GB): €25/month",
+      "Cloud VPS 30 (8 vCPU, 24GB): ~€14/month; Cloud VPS 40 (12 vCPU, 48GB): ~€25/month",
       "EU and US data centers",
-      "Instant activation",
+      "Monthly billing available (no annual commitment required)",
     ],
-    recommended: "Cloud VPS 40 (12 vCPU, 48GB RAM, €25/month) for best multi-agent performance",
+    recommended: "Cloud VPS 40 (12 vCPU, 48GB RAM, ~€25/month) for best multi-agent performance",
   },
   {
     id: "ovh",
@@ -47,12 +47,12 @@ const PROVIDERS: ProviderInfo[] = [
     tagline: "Reliable, good support",
     url: "https://www.ovhcloud.com/en/vps/",
     pros: [
-      "Great EU data centers",
-      "VPS-3 (8 vCPU, 24GB): ~$13/month or VPS-4 (12 vCPU, 48GB): ~$22/month",
+      "Great EU data centers with anti-DDoS included",
       "Good customer support",
-      "Instant activation with anti-DDoS included",
+      "Pricing shown is for annual commitment (month-to-month slightly higher)",
+      "VPS plans with 24-48GB RAM available",
     ],
-    recommended: "VPS-3 (8 vCPU, 24GB RAM, ~$13/month) or VPS-4 (12 vCPU, 48GB RAM, ~$22/month)",
+    recommended: "VPS-3 or VPS-4 tier (check current pricing on their site)",
   },
 ];
 
@@ -143,7 +143,7 @@ const SPEC_CHECKLIST = [
   { label: "CPU", value: "8-12 vCPU" },
   { label: "RAM", value: "24-48 GB (minimum 16 GB)" },
   { label: "Storage", value: "200GB+ NVMe SSD" },
-  { label: "Price", value: "~$13-25/month (varies by provider)" },
+  { label: "Price", value: "~€14-30/month (varies by provider & commitment)" },
 ];
 
 export default function RentVPSPage() {
@@ -179,7 +179,7 @@ export default function RentVPSPage() {
           </div>
           <div>
             <h1 className="bg-gradient-to-r from-foreground via-foreground to-muted-foreground bg-clip-text text-2xl font-bold tracking-tight text-transparent sm:text-3xl">
-              Rent a <Jargon term="vps">VPS</Jargon> (~$13-25/month)
+              Rent a <Jargon term="vps">VPS</Jargon> (~€14-30/month)
             </h1>
             <p className="text-sm text-muted-foreground">
               ~5 min
@@ -318,7 +318,7 @@ export default function RentVPSPage() {
               <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
                 <p className="font-medium text-foreground">Total for full setup:</p>
                 <p className="text-sm text-muted-foreground">
-                  VPS (~$25) + Claude Max x2 ($400) + GPT Pro ($200) = <strong>~$625/month</strong>
+                  VPS (~€25) + Claude Max x2 ($400) + GPT Pro ($200) = <strong>~$625/month</strong>
                   <br /><br />
                   <em>This sounds like a lot, but if it helps you build and ship faster,
                   it pays for itself quickly!</em>
@@ -326,7 +326,7 @@ export default function RentVPSPage() {
               </div>
             </div>
             <p className="mt-4 text-sm text-muted-foreground">
-              <strong>Starting small?</strong> Just get a VPS (~$13-25) and one Claude Pro
+              <strong>Starting small?</strong> Just get a VPS (~€14-25) and one Claude Pro
               subscription ($20). You can scale up as you see results!
             </p>
           </GuideSection>
@@ -342,8 +342,8 @@ export default function RentVPSPage() {
                 Instant activation with no waiting.
               </li>
               <li>
-                <strong>OVH:</strong> Great alternative, actually slightly cheaper! VPS-3 (24GB RAM, ~$13/month)
-                or VPS-4 (48GB RAM, ~$22/month). More polished interface. Great EU data centers.
+                <strong>OVH:</strong> Great alternative with polished interface. Check their site for
+                current VPS-3/VPS-4 pricing (varies by commitment length). Great EU data centers.
                 Instant activation.
               </li>
             </ul>
