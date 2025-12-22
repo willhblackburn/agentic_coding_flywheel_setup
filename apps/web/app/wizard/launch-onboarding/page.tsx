@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { PartyPopper, BookOpen, ExternalLink, Sparkles, ArrowRight, GraduationCap, Terminal, RefreshCw, FolderPlus } from "lucide-react";
+import { PartyPopper, BookOpen, ExternalLink, Sparkles, ArrowRight, GraduationCap, Terminal, RefreshCw, FolderPlus, FolderOpen } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { CommandCard } from "@/components/command-card";
 import { markStepComplete, setCompletedSteps, TOTAL_STEPS } from "@/lib/wizardSteps";
@@ -286,6 +286,61 @@ export default function LaunchOnboardingPage() {
           <GuideTip>
             Claude will set up the project structure, install dependencies, and start
             building. You can guide it step by step or give it the whole vision at once.
+          </GuideTip>
+        </div>
+      </Card>
+
+      {/* Finding Your Way Around - Filesystem orientation */}
+      <Card className="border-[oklch(0.7_0.2_330/0.3)] bg-[oklch(0.7_0.2_330/0.05)] p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <FolderOpen className="h-5 w-5 text-[oklch(0.7_0.2_330)]" />
+          <h2 className="text-xl font-semibold">Finding Your Way Around</h2>
+        </div>
+
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <p className="font-medium">Your home folder</p>
+            <p className="text-sm text-muted-foreground">
+              Everything you create lives in <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">/home/ubuntu</code> (or just <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">~</code>).
+            </p>
+            <CommandCard command="cd ~" description="Go to your home folder" />
+          </div>
+
+          <div className="space-y-2">
+            <p className="font-medium">See what&apos;s here</p>
+            <CommandCard command="lsd" description="List files (with icons!)" />
+            <p className="text-sm text-muted-foreground">
+              We installed <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">lsd</code> — a prettier version of <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">ls</code>.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <p className="font-medium">Navigate into a folder</p>
+            <div className="flex flex-col gap-2 sm:flex-row sm:gap-4">
+              <div className="flex-1">
+                <CommandCard command="cd projects" description="Enter a folder" />
+              </div>
+              <div className="flex-1">
+                <CommandCard command="cd .." description="Go back up" />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <p className="font-medium">Find files fast</p>
+            <div className="flex flex-col gap-2 sm:flex-row sm:gap-4">
+              <div className="flex-1">
+                <CommandCard command='rg "search term"' description="Search file contents" />
+              </div>
+              <div className="flex-1">
+                <CommandCard command="fd filename" description="Find files by name" />
+              </div>
+            </div>
+          </div>
+
+          <GuideTip>
+            Pro tip: Use <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">z</code> (zoxide) to jump to folders you&apos;ve visited before.
+            Just type <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">z proj</code> to jump to your projects folder!
           </GuideTip>
         </div>
       </Card>
