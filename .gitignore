@@ -78,6 +78,7 @@ ehthumbs.db
 # Keep .beads directory but ignore sensitive data
 .beads/cache/
 .beads/*.log
+.beads/*.sock
 
 # ----- Local testing artifacts -----
 tests/vm/.vagrant/
