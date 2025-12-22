@@ -195,11 +195,31 @@ export default function CreateVPSPage() {
         className="space-y-8"
       >
         {/* Universal checklist */}
-        <div className="rounded-xl border border-border/50 bg-card/50 p-4">
-          <h2 className="mb-4 flex items-center gap-2 font-semibold text-foreground">
-            <Server className="h-5 w-5 text-primary" />
-            Setup checklist
-          </h2>
+        <div className={cn(
+          "rounded-xl border p-4 transition-colors",
+          allChecked
+            ? "border-[oklch(0.72_0.19_145/0.5)] bg-[oklch(0.72_0.19_145/0.05)]"
+            : "border-border/50 bg-card/50"
+        )}>
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div>
+              <h2 className="flex items-center gap-2 font-semibold text-foreground">
+                <Server className="h-5 w-5 text-primary" />
+                Setup checklist
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Check each item as you complete it to unlock the next step
+              </p>
+            </div>
+            <div className={cn(
+              "shrink-0 rounded-full px-3 py-1 text-xs font-medium",
+              allChecked
+                ? "bg-[oklch(0.72_0.19_145/0.15)] text-[oklch(0.72_0.19_145)]"
+                : "bg-muted text-muted-foreground"
+            )}>
+              {checkedItems.size} of {CHECKLIST_ITEMS.length}
+            </div>
+          </div>
           <div className="space-y-3">
             {CHECKLIST_ITEMS.map((item) => (
               <label

@@ -54,9 +54,13 @@ async function setupWizardState(
  * - Step 4 (Rent VPS): "I rented a VPS"
  * - Step 5 (Create VPS): "Continue to SSH"
  * - Step 6 (SSH Connect): "I'm connected, continue"
- * - Step 7 (Run Installer): "Installation finished"
- * - Step 8 (Reconnect Ubuntu): "I'm connected as ubuntu"
- * - Step 9 (Status Check): "Everything looks good!"
+ * - Step 7 (Accounts): "Continue"
+ * - Step 8 (Pre-Flight Check): "Continue" (after checking "Pre-flight passed")
+ * - Step 9 (Run Installer): "Installation finished"
+ * - Step 10 (Reconnect Ubuntu): "I'm connected as ubuntu"
+ * - Step 11 (Verify Key Connection): "My key works, continue"
+ * - Step 12 (Status Check): "Everything looks good!"
+ * - Step 13 (Launch Onboarding): "Start Learning Hub"
  */
 
 test.describe("Wizard Flow", () => {
@@ -674,11 +678,11 @@ test.describe("No localStorage (query-only resilience)", () => {
 });
 
 // =============================================================================
-// STEP 7: RUN INSTALLER - Individual Tests
+// STEP 9: RUN INSTALLER - Individual Tests
 // =============================================================================
 test.describe("Step 9: Run Installer Page", () => {
   test.beforeEach(async ({ page }) => {
-    // Set up prerequisite state for step 7
+    // Set up prerequisite state for step 9
     await setupWizardState(page, { os: "mac", ip: "192.168.1.100" });
   });
 
@@ -832,7 +836,7 @@ test.describe("Step 10: Reconnect Ubuntu Page", () => {
 });
 
 // =============================================================================
-// STEP 9: STATUS CHECK - Individual Tests
+// STEP 12: STATUS CHECK - Individual Tests
 // =============================================================================
 test.describe("Step 12: Status Check Page", () => {
   test.beforeEach(async ({ page }) => {
@@ -895,7 +899,7 @@ test.describe("Step 12: Status Check Page", () => {
 });
 
 // =============================================================================
-// STEP 10: LAUNCH ONBOARDING - Individual Tests
+// STEP 13: LAUNCH ONBOARDING - Individual Tests
 // =============================================================================
 test.describe("Step 13: Launch Onboarding Page", () => {
   test.beforeEach(async ({ page }) => {
