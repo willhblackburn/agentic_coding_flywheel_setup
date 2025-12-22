@@ -92,15 +92,15 @@ readonly ACFS_PHASE_IDS=(
 
 # Human-readable phase names for display
 declare -A ACFS_PHASE_NAMES=(
-    ["user_setup"]="User Normalization"
-    ["filesystem"]="Filesystem Setup"
-    ["shell_setup"]="Shell Setup"
-    ["cli_tools"]="CLI Tools"
-    ["languages"]="Language Runtimes"
-    ["agents"]="Coding Agents"
-    ["cloud_db"]="Cloud & Database Tools"
-    ["stack"]="Dicklesworthstone Stack"
-    ["finalize"]="Final Wiring"
+    [user_setup]="User Normalization"
+    [filesystem]="Filesystem Setup"
+    [shell_setup]="Shell Setup"
+    [cli_tools]="CLI Tools"
+    [languages]="Language Runtimes"
+    [agents]="Coding Agents"
+    [cloud_db]="Cloud & Database Tools"
+    [stack]="Dicklesworthstone Stack"
+    [finalize]="Final Wiring"
 )
 
 # Current schema version

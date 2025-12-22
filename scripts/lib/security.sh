@@ -113,21 +113,21 @@ fi
 # Format: URL|SHA256 (computed from the install script content)
 # These are reference checksums - actual scripts may change
 declare -A KNOWN_INSTALLERS=(
-    ["bun"]="https://bun.sh/install"
-    ["claude"]="https://claude.ai/install.sh"
-    ["uv"]="https://astral.sh/uv/install.sh"
-    ["rust"]="https://sh.rustup.rs"
-    ["ohmyzsh"]="https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh"
-    ["zoxide"]="https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh"
-    ["atuin"]="https://setup.atuin.sh"
-    ["ntm"]="https://raw.githubusercontent.com/Dicklesworthstone/ntm/main/install.sh"
-    ["mcp_agent_mail"]="https://raw.githubusercontent.com/Dicklesworthstone/mcp_agent_mail/main/scripts/install.sh"
-    ["ubs"]="https://raw.githubusercontent.com/Dicklesworthstone/ultimate_bug_scanner/master/install.sh"
-    ["bv"]="https://raw.githubusercontent.com/Dicklesworthstone/beads_viewer/main/install.sh"
-    ["cass"]="https://raw.githubusercontent.com/Dicklesworthstone/coding_agent_session_search/main/install.sh"
-    ["cm"]="https://raw.githubusercontent.com/Dicklesworthstone/cass_memory_system/main/install.sh"
-    ["caam"]="https://raw.githubusercontent.com/Dicklesworthstone/coding_agent_account_manager/main/install.sh"
-    ["slb"]="https://raw.githubusercontent.com/Dicklesworthstone/simultaneous_launch_button/main/scripts/install.sh"
+    [bun]="https://bun.sh/install"
+    [claude]="https://claude.ai/install.sh"
+    [uv]="https://astral.sh/uv/install.sh"
+    [rust]="https://sh.rustup.rs"
+    [ohmyzsh]="https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh"
+    [zoxide]="https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh"
+    [atuin]="https://setup.atuin.sh"
+    [ntm]="https://raw.githubusercontent.com/Dicklesworthstone/ntm/main/install.sh"
+    [mcp_agent_mail]="https://raw.githubusercontent.com/Dicklesworthstone/mcp_agent_mail/main/scripts/install.sh"
+    [ubs]="https://raw.githubusercontent.com/Dicklesworthstone/ultimate_bug_scanner/master/install.sh"
+    [bv]="https://raw.githubusercontent.com/Dicklesworthstone/beads_viewer/main/install.sh"
+    [cass]="https://raw.githubusercontent.com/Dicklesworthstone/coding_agent_session_search/main/install.sh"
+    [cm]="https://raw.githubusercontent.com/Dicklesworthstone/cass_memory_system/main/install.sh"
+    [caam]="https://raw.githubusercontent.com/Dicklesworthstone/coding_agent_account_manager/main/install.sh"
+    [slb]="https://raw.githubusercontent.com/Dicklesworthstone/simultaneous_launch_button/main/scripts/install.sh"
 )
 
 # Colors
