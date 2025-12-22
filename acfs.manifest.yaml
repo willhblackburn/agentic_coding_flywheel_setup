@@ -154,6 +154,18 @@ modules:
         echo '# User overrides live here forever' >> ~/.zshrc
         echo '[ -f "$HOME/.zshrc.local" ] && source "$HOME/.zshrc.local"' >> ~/.zshrc
       - |
+        # Setup ~/.profile for bash login shells (prevents PATH warnings from installers)
+        if [[ ! -f ~/.profile ]]; then
+          echo '# ~/.profile: executed by bash for login shells' > ~/.profile
+          echo '' >> ~/.profile
+          echo '# User binary paths' >> ~/.profile
+          echo 'export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/.bun/bin:$PATH"' >> ~/.profile
+        elif ! grep -q '\.local/bin' ~/.profile; then
+          echo '' >> ~/.profile
+          echo '# Added by ACFS - user binary paths' >> ~/.profile
+          echo 'export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/.bun/bin:$PATH"' >> ~/.profile
+        fi
+      - |
         # Set default shell
         if [[ "$SHELL" != */zsh ]]; then
           zsh_path="$(command -v zsh || true)"

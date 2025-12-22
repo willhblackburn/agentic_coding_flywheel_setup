@@ -209,6 +209,27 @@ INSTALL_SHELL_OMZ
         fi
     fi
     if [[ "${DRY_RUN:-false}" == "true" ]]; then
+        log_info "dry-run: install: # Setup ~/.profile for bash login shells (prevents PATH warnings from installers) (target_user)"
+    else
+        if ! run_as_target_shell <<'INSTALL_SHELL_OMZ'
+# Setup ~/.profile for bash login shells (prevents PATH warnings from installers)
+if [[ ! -f ~/.profile ]]; then
+  echo '# ~/.profile: executed by bash for login shells' > ~/.profile
+  echo '' >> ~/.profile
+  echo '# User binary paths' >> ~/.profile
+  echo 'export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/.bun/bin:$PATH"' >> ~/.profile
+elif ! grep -q '\.local/bin' ~/.profile; then
+  echo '' >> ~/.profile
+  echo '# Added by ACFS - user binary paths' >> ~/.profile
+  echo 'export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/.bun/bin:$PATH"' >> ~/.profile
+fi
+INSTALL_SHELL_OMZ
+        then
+            log_error "shell.omz: install command failed: # Setup ~/.profile for bash login shells (prevents PATH warnings from installers)"
+            return 1
+        fi
+    fi
+    if [[ "${DRY_RUN:-false}" == "true" ]]; then
         log_info "dry-run: install: # Set default shell (target_user)"
     else
         if ! run_as_target_shell <<'INSTALL_SHELL_OMZ'
