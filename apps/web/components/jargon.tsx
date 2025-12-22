@@ -266,10 +266,10 @@ export function Jargon({ term, children, className }: JargonProps) {
                 animate={prefersReducedMotion ? { opacity: 1 } : { y: 0 }}
                 exit={prefersReducedMotion ? { opacity: 0 } : { y: "100%" }}
                 transition={prefersReducedMotion ? { duration: 0.12 } : springs.smooth}
-                className="fixed inset-x-0 bottom-0 z-[9999] max-h-[80vh] overflow-hidden rounded-t-3xl border-t border-border/50 bg-card/98 shadow-2xl backdrop-blur-xl"
+                className="fixed inset-x-0 bottom-0 z-[9999] flex max-h-[80vh] flex-col rounded-t-3xl border-t border-border/50 bg-card/98 shadow-2xl backdrop-blur-xl"
               >
                 {/* Handle */}
-                <div className="flex justify-center pt-3 pb-1">
+                <div className="flex shrink-0 justify-center pt-3 pb-1">
                   <div className="h-1 w-10 rounded-full bg-muted-foreground/30" />
                 </div>
 
@@ -282,8 +282,11 @@ export function Jargon({ term, children, className }: JargonProps) {
                   <X className="h-5 w-5" />
                 </button>
 
-                {/* Content */}
-                <div className="overflow-y-auto px-6 pt-2 pb-[calc(2rem+env(safe-area-inset-bottom,0px))]">
+                {/* Content - iOS needs overscroll-contain and touch-action for proper scrolling */}
+                <div
+                  className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pt-2 pb-[calc(2rem+env(safe-area-inset-bottom,0px))]"
+                  style={{ WebkitOverflowScrolling: 'touch' }}
+                >
                   <SheetContent term={jargonData} termKey={term} />
                 </div>
               </motion.div>
