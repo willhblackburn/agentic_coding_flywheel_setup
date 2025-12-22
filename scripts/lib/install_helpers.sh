@@ -48,7 +48,9 @@ fi
 #
 # Note: The orchestrator (install.sh) remains responsible for state/resume framing.
 
-ACFS_GENERATED_MIGRATED_CATEGORIES_DEFAULT=() # Empty until categories are explicitly migrated.
+# Default categories array. Set via ACFS_GENERATED_DEFAULT_CATEGORIES in code,
+# or override at runtime with ACFS_GENERATED_MIGRATED_CATEGORIES env var (comma-separated).
+ACFS_GENERATED_DEFAULT_CATEGORIES=() # Empty until categories are explicitly migrated.
 
 _acfs_upper() {
     local s="${1:-}"
@@ -395,7 +397,7 @@ should_run_module() {
 #
 # Configure migrated categories via:
 #   - ACFS_GENERATED_MIGRATED_CATEGORIES="base,lang,agents"   (comma-separated), OR
-#   - ACFS_GENERATED_MIGRATED_CATEGORIES_DEFAULT (array in this file)
+#   - ACFS_GENERATED_DEFAULT_CATEGORIES (array in this file)
 # ------------------------------------------------------------
 
 : "${ACFS_USE_GENERATED:=1}" # Default to "enabled", but only affects migrated categories.
@@ -406,9 +408,11 @@ _acfs_category_is_migrated() {
 
     local migrated_categories=()
     if [[ -n "${ACFS_GENERATED_MIGRATED_CATEGORIES:-}" ]]; then
+        # Runtime override via env var (comma-separated)
         IFS=',' read -ra migrated_categories <<< "${ACFS_GENERATED_MIGRATED_CATEGORIES}"
     else
-        migrated_categories=("${ACFS_GENERATED_MIGRATED_CATEGORIES_DEFAULT[@]}")
+        # Code-defined defaults
+        migrated_categories=("${ACFS_GENERATED_DEFAULT_CATEGORIES[@]}")
     fi
 
     local c=""
@@ -633,83 +637,11 @@ command_exists_as_target() {
 }
 
 # ------------------------------------------------------------
-# Generated vs legacy installer feature flags
+# Alias for backwards compatibility with install.sh
+# The canonical implementation is acfs_use_generated_for_category() above.
 # ------------------------------------------------------------
-# Global: ACFS_USE_GENERATED=0|1
-# Per-category: ACFS_USE_GENERATED_<CATEGORY>=0|1
-# Default: use generated only for categories listed below.
-# Update ACFS_GENERATED_DEFAULT_CATEGORIES as categories migrate.
-
-ACFS_GENERATED_DEFAULT_CATEGORIES=()
-
-_acfs_normalize_category_key() {
-    local category="$1"
-    local upper="${category^^}"
-    # Replace non-alnum with underscores for env var names
-    upper="${upper//[^A-Z0-9]/_}"
-    echo "$upper"
-}
-
-_acfs_parse_bool() {
-    local value="${1:-}"
-    case "${value,,}" in
-        1|true|yes|on)
-            echo "1"
-            ;;
-        0|false|no|off)
-            echo "0"
-            ;;
-        "")
-            echo ""
-            return 1
-            ;;
-        *)
-            echo "invalid"
-            return 2
-            ;;
-    esac
-}
-
 acfs_use_generated_category() {
-    local category="$1"
-    local key
-    key="$(_acfs_normalize_category_key "$category")"
-    local var="ACFS_USE_GENERATED_${key}"
-    local raw="${!var-}"
-    local parsed=""
-
-    if [[ -n "$raw" ]]; then
-        parsed=$(_acfs_parse_bool "$raw")
-        if [[ "$parsed" == "1" ]]; then
-            return 0
-        fi
-        if [[ "$parsed" == "0" ]]; then
-            return 1
-        fi
-        log_warn "Invalid $var=$raw (expected 0|1); defaulting to legacy"
-        return 1
-    fi
-
-    if [[ -n "${ACFS_USE_GENERATED-}" ]]; then
-        parsed=$(_acfs_parse_bool "$ACFS_USE_GENERATED")
-        if [[ "$parsed" == "1" ]]; then
-            return 0
-        fi
-        if [[ "$parsed" == "0" ]]; then
-            return 1
-        fi
-        log_warn "Invalid ACFS_USE_GENERATED=$ACFS_USE_GENERATED (expected 0|1); defaulting to legacy"
-        return 1
-    fi
-
-    local default_category=""
-    for default_category in "${ACFS_GENERATED_DEFAULT_CATEGORIES[@]}"; do
-        if [[ "$default_category" == "$category" ]]; then
-            return 0
-        fi
-    done
-
-    return 1
+    acfs_use_generated_for_category "$@"
 }
 
 acfs_run_generated_category_phase() {
