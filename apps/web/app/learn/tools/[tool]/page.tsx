@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { type ReactNode } from "react";
+
+// Force dynamic rendering to work around Next.js 16.1.0 Turbopack static generation bug
+// See: https://github.com/vercel/next.js/issues/
+export const dynamic = "force-dynamic";
 import {
   ArrowLeft,
   Bot,
@@ -253,9 +257,8 @@ interface Props {
   params: Promise<{ tool: string }>;
 }
 
-export async function generateStaticParams() {
-  return Object.keys(TOOLS).map((tool) => ({ tool }));
-}
+// generateStaticParams removed due to Next.js 16.1.0 Turbopack bug with workUnitAsyncStorage
+// Using force-dynamic instead until the bug is fixed upstream
 
 export default async function ToolDocPage({ params }: Props) {
   const { tool } = await params;
