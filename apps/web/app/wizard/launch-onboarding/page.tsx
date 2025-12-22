@@ -376,8 +376,8 @@ export default function LaunchOnboardingPage() {
               <h3 className="font-medium">Authenticate Claude</h3>
               <CommandCard command="claude" />
               <p className="text-sm text-muted-foreground">
-                A browser window will open. Log in with your Anthropic account,
-                then return to your terminal.
+                The terminal will display a URL. Copy it and open in your laptop&apos;s
+                browser to log in, then return to your terminal.
               </p>
             </div>
           </div>

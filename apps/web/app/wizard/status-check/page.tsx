@@ -355,7 +355,7 @@ export default function StatusCheckPage() {
           <GuideSection title="Authenticating Your Services">
             <p className="mb-3">
               The services you signed up for need to be connected to your VPS.
-              Each command opens a browser window where you log in:
+              Each command displays a URL to open in your laptop&apos;s browser:
             </p>
             <div className="space-y-4">
               <GuideStep number={1} title="Run the login command">

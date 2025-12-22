@@ -286,6 +286,11 @@ export default function GenerateSSHKeyPage() {
 |    . o.=o+ .    |
 |     . =.= o     |
 |      o + = .    |
+|     . S o = .   |
+|      o + o +    |
+|     . = = * o   |
+|    . o.=.X.*.   |
+|     ..+.o+E=.   |
 +----[SHA256]-----+`}</pre>
                   </OutputPreview>
                 </div>
@@ -294,6 +299,40 @@ export default function GenerateSSHKeyPage() {
                 </p>
               </GuideStep>
             </div>
+          </GuideSection>
+
+          <GuideSection title="Verify Your Key Was Created">
+            <p className="mb-4">
+              Let&apos;s make sure your keys were created correctly:
+            </p>
+            <div className="space-y-4">
+              <GuideStep number={1} title="Check the files exist">
+                <CommandCard
+                  command="ls -la ~/.ssh/acfs_*"
+                  windowsCommand="dir $HOME\\.ssh\\acfs_*"
+                  description="List your new key files"
+                />
+                <p className="mt-3 text-sm text-muted-foreground">
+                  You should see two files:
+                </p>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
+                  <li>
+                    <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">acfs_ed25519</code>
+                    <span className="text-muted-foreground"> — Your <strong className="text-foreground">private key</strong> (keep this secret!)</span>
+                  </li>
+                  <li>
+                    <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">acfs_ed25519.pub</code>
+                    <span className="text-muted-foreground"> — Your <strong className="text-foreground">public key</strong> (this gets shared)</span>
+                  </li>
+                </ul>
+              </GuideStep>
+            </div>
+
+            <GuideTip>
+              Think of it like a mailbox: the <strong>public key</strong> is your address
+              (you share it so people can send you mail), and the <strong>private key</strong>
+              is your mailbox key (only you have it to open your mail).
+            </GuideTip>
           </GuideSection>
 
           <GuideSection title="Now Copy Your Public Key">
