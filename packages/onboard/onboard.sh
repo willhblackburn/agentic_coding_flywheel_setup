@@ -61,6 +61,19 @@ declare -a LESSON_FILES=(
     "08_keeping_updated.md"
 )
 
+# Lesson summaries - key learning points for celebration screen (pipe-separated)
+declare -gA LESSON_SUMMARIES=(
+    [0]="Understanding the ACFS philosophy|How AI agents fit into development|Your path to productivity"
+    [1]="Navigating with pwd, ls, cd|Creating files and directories|Understanding file paths"
+    [2]="SSH key-based authentication|Keeping sessions alive|Remote work best practices"
+    [3]="Creating and managing sessions|Window and pane navigation|Session persistence"
+    [4]="Claude Code (cc) workflow|Codex CLI (cod) basics|Gemini CLI (gmi) overview"
+    [5]="NTM dashboard navigation|Understanding system status|Quick actions and controls"
+    [6]="Using the prompt palette|Common prompts and shortcuts|Customizing your workflow"
+    [7]="The agentic development loop|Continuous improvement|Measuring productivity"
+    [8]="Keeping tools updated|Staying current with AI agents|Community resources"
+)
+
 # Service definitions for authentication flow
 declare -a AUTH_SERVICES=(
     "tailscale"
@@ -585,6 +598,14 @@ show_menu_gum() {
     items+=("🔐 [a] Authenticate Services")
     items+=("↺ [r] Restart from beginning")
     items+=("📊 [s] Show status")
+    # Show certificate option only when all lessons complete
+    local all_complete=true
+    for i in {0..8}; do
+        is_completed "$i" || { all_complete=false; break; }
+    done
+    if [[ "$all_complete" == "true" ]]; then
+        items+=("🏆 [t] View Certificate")
+    fi
     items+=("👋 [q] Quit")
 
     # Show menu with gum using Catppuccin colors
@@ -604,6 +625,8 @@ show_menu_gum() {
         echo "r"
     elif [[ "$choice" =~ \[s\] ]]; then
         echo "s"
+    elif [[ "$choice" =~ \[t\] ]]; then
+        echo "t"
     else
         echo "q"
     fi
@@ -622,16 +645,27 @@ show_menu_basic() {
     echo -e "  ${DIM}[a] Authenticate Services${NC}"
     echo -e "  ${DIM}[r] Restart from beginning${NC}"
     echo -e "  ${DIM}[s] Show status${NC}"
+    # Show certificate option only when all lessons complete
+    local all_complete=true
+    for i in {0..8}; do
+        is_completed "$i" || { all_complete=false; break; }
+    done
+    if [[ "$all_complete" == "true" ]]; then
+        echo -e "  ${GREEN}[t] View Certificate${NC}"
+    fi
     echo -e "  ${DIM}[q] Quit${NC}"
     echo ""
 
-    read -rp "$(echo -e "${CYAN}Choose [1-9, a, r, s, q]:${NC} ")" choice
+    local prompt_opts="1-9, a, r, s, q"
+    [[ "$all_complete" == "true" ]] && prompt_opts="1-9, a, r, s, t, q"
+    read -rp "$(echo -e "${CYAN}Choose [$prompt_opts]:${NC} ")" choice
 
     case "$choice" in
         [1-9]) echo "$choice" ;;
         a|A) echo "a" ;;
         r|R) echo "r" ;;
         s|S) echo "s" ;;
+        t|T) echo "t" ;;
         q|Q|"") echo "q" ;;
         *) echo "invalid" ;;
     esac
@@ -659,6 +693,128 @@ render_markdown() {
             -e "s/^---$/$(printf '\033[90m')────────────────────────────────────────$(printf '\033[0m')/" \
             -e "s/^- /  • /" \
             "$file"
+    fi
+}
+
+# Show celebration screen after completing a lesson
+show_celebration() {
+    local idx=$1
+    local title="${LESSON_TITLES[$idx]}"
+    local summaries="${LESSON_SUMMARIES[$idx]:-}"
+
+    clear 2>/dev/null || true
+
+    if has_gum; then
+        # Build summary bullets
+        local summary_text=""
+        if [[ -n "$summaries" ]]; then
+            IFS='|' read -ra items <<< "$summaries"
+            for item in "${items[@]}"; do
+                summary_text+="$(gum style --foreground "$ACFS_TEAL" "  ✦ $item")"$'\n'
+            done
+        fi
+
+        gum style \
+            --border double \
+            --border-foreground "$ACFS_SUCCESS" \
+            --padding "2 4" \
+            --margin "2" \
+            --align center \
+            "$(gum style --foreground "$ACFS_SUCCESS" --bold '🎉 Lesson Complete!')" \
+            "" \
+            "$(gum style --foreground "$ACFS_PINK" --bold "Lesson $((idx + 1)): $title")" \
+            "" \
+            "$(gum style --foreground "$ACFS_MUTED" 'You learned:')" \
+            "$summary_text" \
+            "" \
+            "$(gum style --foreground "$ACFS_ACCENT" "Progress: $((idx + 1))/9 lessons")"
+
+        sleep 2
+    else
+        echo ""
+        echo -e "${GREEN}${BOLD}╔═══════════════════════════════════════════════════╗${NC}"
+        echo -e "${GREEN}${BOLD}║            🎉 Lesson Complete!                     ║${NC}"
+        echo -e "${GREEN}${BOLD}╚═══════════════════════════════════════════════════╝${NC}"
+        echo ""
+        echo -e "${MAGENTA}${BOLD}Lesson $((idx + 1)): $title${NC}"
+        echo ""
+        echo -e "${DIM}You learned:${NC}"
+
+        if [[ -n "$summaries" ]]; then
+            IFS='|' read -ra items <<< "$summaries"
+            for item in "${items[@]}"; do
+                echo -e "  ${CYAN}✦${NC} $item"
+            done
+        fi
+
+        echo ""
+        echo -e "${CYAN}Progress: $((idx + 1))/9 lessons${NC}"
+        echo ""
+        sleep 2
+    fi
+}
+
+# Show completion certificate when all lessons are done
+show_completion_certificate() {
+    local completed_at
+    completed_at=$(date '+%Y-%m-%d %H:%M')
+
+    clear 2>/dev/null || true
+
+    if has_gum; then
+        gum style \
+            --border double \
+            --border-foreground "$ACFS_SUCCESS" \
+            --padding "2 6" \
+            --margin "2" \
+            --align center \
+            "$(gum style --foreground "$ACFS_ACCENT" --bold '╔═══════════════════════════════════════╗')" \
+            "$(gum style --foreground "$ACFS_ACCENT" --bold '║     CERTIFICATE OF COMPLETION         ║')" \
+            "$(gum style --foreground "$ACFS_ACCENT" --bold '╚═══════════════════════════════════════╝')" \
+            "" \
+            "$(gum style --foreground "$ACFS_SUCCESS" --bold '🏆 ACFS Onboarding Complete! 🏆')" \
+            "" \
+            "$(gum style --foreground "$ACFS_PINK" "You have successfully completed all 9 lessons")" \
+            "$(gum style --foreground "$ACFS_PINK" "of the Agentic Coding Flywheel Setup tutorial.")" \
+            "" \
+            "$(gum style --foreground "$ACFS_TEAL" "Skills Mastered:")" \
+            "$(gum style --foreground "$ACFS_MUTED" "  • Linux Navigation & File Management")" \
+            "$(gum style --foreground "$ACFS_MUTED" "  • SSH & Remote Session Management")" \
+            "$(gum style --foreground "$ACFS_MUTED" "  • tmux Session Persistence")" \
+            "$(gum style --foreground "$ACFS_MUTED" "  • AI Coding Agents (Claude, Codex, Gemini)")" \
+            "$(gum style --foreground "$ACFS_MUTED" "  • NTM Dashboard & Prompt Palette")" \
+            "$(gum style --foreground "$ACFS_MUTED" "  • The Agentic Development Flywheel")" \
+            "" \
+            "$(gum style --foreground "$ACFS_PRIMARY" "Completed: $completed_at")" \
+            "" \
+            "$(gum style --foreground "$ACFS_SUCCESS" --bold '🚀 You are ready to fly! 🚀')"
+
+        echo ""
+        gum confirm --affirmative "Continue" --negative "" "" || true
+    else
+        echo ""
+        echo -e "${CYAN}${BOLD}╔═══════════════════════════════════════════════════════════╗${NC}"
+        echo -e "${CYAN}${BOLD}║              CERTIFICATE OF COMPLETION                     ║${NC}"
+        echo -e "${CYAN}${BOLD}╚═══════════════════════════════════════════════════════════╝${NC}"
+        echo ""
+        echo -e "${GREEN}${BOLD}         🏆 ACFS Onboarding Complete! 🏆${NC}"
+        echo ""
+        echo -e "  You have successfully completed all 9 lessons"
+        echo -e "  of the Agentic Coding Flywheel Setup tutorial."
+        echo ""
+        echo -e "${CYAN}${BOLD}  Skills Mastered:${NC}"
+        echo -e "    • Linux Navigation & File Management"
+        echo -e "    • SSH & Remote Session Management"
+        echo -e "    • tmux Session Persistence"
+        echo -e "    • AI Coding Agents (Claude, Codex, Gemini)"
+        echo -e "    • NTM Dashboard & Prompt Palette"
+        echo -e "    • The Agentic Development Flywheel"
+        echo ""
+        echo -e "${DIM}  Completed: $completed_at${NC}"
+        echo ""
+        echo -e "${GREEN}${BOLD}         🚀 You are ready to fly! 🚀${NC}"
+        echo ""
+        read -rp "Press Enter to continue..."
     fi
 }
 
@@ -747,21 +903,12 @@ $(gum style --foreground "$ACFS_PINK" --bold "${LESSON_TITLES[$idx]}")"
                 ;;
             *"[c]"*)
                 mark_completed "$idx"
-                gum style --foreground "$ACFS_SUCCESS" --bold "✓ Lesson $((idx + 1)) marked complete!"
-                sleep 1
+                show_celebration "$idx"
                 if [[ $idx -lt 8 ]]; then
                     show_lesson $((idx + 1))
                     return $?
                 else
-                    gum style \
-                        --border double \
-                        --border-foreground "$ACFS_SUCCESS" \
-                        --padding "1 3" \
-                        --align center \
-                        "$(gum style --foreground "$ACFS_SUCCESS" --bold '🎉 Congratulations!')
-$(gum style --foreground "$ACFS_TEAL" "You've completed all lessons!")
-$(gum style --foreground "$ACFS_MUTED" "You're ready to fly!")"
-                    sleep 2
+                    show_completion_certificate
                     return 0
                 fi
                 ;;
@@ -803,14 +950,12 @@ $(gum style --foreground "$ACFS_MUTED" "You're ready to fly!")"
                     ;;
                 c|C)
                     mark_completed "$idx"
-                    echo -e "${GREEN}Lesson $((idx + 1)) marked complete!${NC}"
-                    sleep 1
+                    show_celebration "$idx"
                     if [[ $idx -lt 8 ]]; then
                         show_lesson $((idx + 1))
                         return $?
                     else
-                        echo -e "${GREEN}${BOLD}Congratulations! You've completed all lessons!${NC}"
-                        sleep 2
+                        show_completion_certificate
                         return 0
                     fi
                     ;;
@@ -957,6 +1102,9 @@ main_menu() {
                 ;;
             s)
                 show_status
+                ;;
+            t)
+                show_completion_certificate
                 ;;
             q)
                 echo -e "${GREEN}Happy coding!${NC}"
