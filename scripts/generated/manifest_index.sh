@@ -6,7 +6,7 @@
 # ============================================================
 # Data-only manifest index. Safe to source.
 
-ACFS_MANIFEST_SHA256="6e18f941d2bfa558f649e47cea508f73d3eefca63c7238ef600b794b97b8a42f"
+ACFS_MANIFEST_SHA256="4b0c8e777e319db1b76fa4bc023ffb662c021bf2afed35d617a7ada2507d23a8"
 
 ACFS_MODULES_IN_ORDER=(
   "base.system"
@@ -105,7 +105,7 @@ declare -gA ACFS_MODULE_DEPS=(
   [cloud.supabase]="lang.bun"
   [cloud.vercel]="lang.bun"
   [stack.ntm]="cli.modern"
-  [stack.mcp_agent_mail]="lang.bun,lang.uv"
+  [stack.mcp_agent_mail]="lang.bun,lang.uv,cli.modern"
   [stack.ultimate_bug_scanner]="lang.bun,lang.uv,tools.ast_grep"
   [stack.beads_viewer]="lang.go"
   [stack.cass]="lang.rust,lang.uv"
@@ -213,7 +213,7 @@ declare -gA ACFS_MODULE_TAGS=(
   [cloud.supabase]="optional,cloud"
   [cloud.vercel]="optional,cloud"
   [stack.ntm]="recommended"
-  [stack.mcp_agent_mail]="recommended"
+  [stack.mcp_agent_mail]="recommended,tmux-spawn"
   [stack.ultimate_bug_scanner]="recommended"
   [stack.beads_viewer]="recommended"
   [stack.cass]="recommended"

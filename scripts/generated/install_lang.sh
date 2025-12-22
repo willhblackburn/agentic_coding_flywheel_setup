@@ -176,7 +176,7 @@ INSTALL_LANG_UV
     log_success "lang.uv installed"
 }
 
-# Rust + cargo
+# Rust nightly + cargo
 install_lang_rust() {
     local module_id="lang.rust"
     acfs_require_contract "module:${module_id}" || return 1
@@ -202,7 +202,7 @@ install_lang_rust() {
                     expected_sha256="$(get_checksum "$tool" 2>/dev/null)" || expected_sha256=""
 
                     if [[ -n "$url" ]] && [[ -n "$expected_sha256" ]]; then
-                        if verify_checksum "$url" "$expected_sha256" "$tool" 2>/dev/null | run_as_target_runner 'sh' '-s' '--' '-y'; then
+                        if verify_checksum "$url" "$expected_sha256" "$tool" 2>/dev/null | run_as_target_runner 'sh' '-s' '--' '-y' '--default-toolchain' 'nightly'; then
                             install_success=true
                         fi
                     fi
@@ -229,6 +229,17 @@ install_lang_rust() {
 INSTALL_LANG_RUST
         then
             log_error "lang.rust: verify failed: ~/.cargo/bin/cargo --version"
+            return 1
+        fi
+    fi
+    if [[ "${DRY_RUN:-false}" == "true" ]]; then
+        log_info "dry-run: verify: ~/.cargo/bin/rustup show | grep -q nightly (target_user)"
+    else
+        if ! run_as_target_shell <<'INSTALL_LANG_RUST'
+~/.cargo/bin/rustup show | grep -q nightly
+INSTALL_LANG_RUST
+        then
+            log_error "lang.rust: verify failed: ~/.cargo/bin/rustup show | grep -q nightly"
             return 1
         fi
     fi

@@ -172,16 +172,6 @@ INSTALL_STACK_MCP_AGENT_MAIL
             return 1
         fi
     fi
-    if [[ "${DRY_RUN:-false}" == "true" ]]; then
-        log_info "dry-run: verify (optional): curl -fsS http://127.0.0.1:8765/health (target_user)"
-    else
-        if ! run_as_target_shell <<'INSTALL_STACK_MCP_AGENT_MAIL'
-curl -fsS http://127.0.0.1:8765/health
-INSTALL_STACK_MCP_AGENT_MAIL
-        then
-            log_warn "Optional verify failed: stack.mcp_agent_mail"
-        fi
-    fi
 
     log_success "stack.mcp_agent_mail installed"
 }

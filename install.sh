@@ -2294,11 +2294,12 @@ install_languages_legacy_lang() {
         try_step "Installing Bun" acfs_run_verified_upstream_script_as_target "bun" "bash" || return 1
     fi
 
-    # Rust (install as target user)
+    # Rust nightly (install as target user)
+    # We use nightly for latest features and to install tools like dust/lsd
     local cargo_bin="$TARGET_HOME/.cargo/bin/cargo"
     if [[ ! -x "$cargo_bin" ]]; then
-        log_detail "Installing Rust for $TARGET_USER"
-        try_step "Installing Rust" acfs_run_verified_upstream_script_as_target "rust" "sh" -y || return 1
+        log_detail "Installing Rust nightly for $TARGET_USER"
+        try_step "Installing Rust nightly" acfs_run_verified_upstream_script_as_target "rust" "sh" -y --default-toolchain nightly || return 1
     fi
 
     # Go (system-wide)
@@ -2317,8 +2318,26 @@ install_languages_legacy_lang() {
 }
 
 install_languages_legacy_tools() {
-    # ast-grep (sg) - required by UBS for syntax-aware scanning
     local cargo_bin="$TARGET_HOME/.cargo/bin/cargo"
+
+    # Helper to install cargo tools with fallback
+    _cargo_install() {
+        local tool="$1"
+        local bin_name="${2:-$1}"
+        if [[ ! -x "$TARGET_HOME/.cargo/bin/$bin_name" ]]; then
+            if [[ -x "$cargo_bin" ]]; then
+                log_detail "Installing $tool via cargo"
+                if try_step "Installing $tool via cargo" run_as_target "$cargo_bin" install "$tool" --locked 2>/dev/null || \
+                   try_step "Installing $tool via cargo (no --locked)" run_as_target "$cargo_bin" install "$tool"; then
+                    log_success "$tool installed"
+                else
+                    log_warn "Failed to install $tool (optional)"
+                fi
+            fi
+        fi
+    }
+
+    # ast-grep (sg) - required by UBS for syntax-aware scanning
     if [[ ! -x "$TARGET_HOME/.cargo/bin/sg" ]]; then
         if [[ -x "$cargo_bin" ]]; then
             log_detail "Installing ast-grep (sg) via cargo"
@@ -2331,6 +2350,14 @@ install_languages_legacy_tools() {
             log_fatal "Cargo not found at $cargo_bin (cannot install ast-grep)"
         fi
     fi
+
+    # Install additional cargo tools (dust, lsd, etc.)
+    # These are better than apt versions and always up-to-date
+    _cargo_install "du-dust" "dust"      # Better du replacement
+    _cargo_install "lsd"                  # Better ls replacement
+    _cargo_install "bat" "bat"            # Better cat replacement (may already be from apt)
+    _cargo_install "fd-find" "fd"         # Better find replacement (may already be from apt)
+    _cargo_install "ripgrep" "rg"         # Better grep (may already be from apt, but cargo is newer)
 
     # Atuin (install as target user)
     # Check both the data directory and the binary location
@@ -2615,11 +2642,28 @@ install_stack() {
     fi
 
     # MCP Agent Mail (check for mcp-agent-mail stub or mcp_agent_mail directory)
+    # NOTE: We run this in tmux because the installer starts the server which blocks
     if binary_installed "mcp-agent-mail" || [[ -d "$TARGET_HOME/mcp_agent_mail" ]]; then
         log_detail "MCP Agent Mail already installed"
     else
-        log_detail "Installing MCP Agent Mail"
-        try_step "Installing MCP Agent Mail" acfs_run_verified_upstream_script_as_target "mcp_agent_mail" "bash" --yes || log_warn "MCP Agent Mail installation may have failed"
+        log_detail "Installing MCP Agent Mail (in tmux session)"
+        # Create or use acfs-services tmux session, run installer in first pane
+        # The installer will start the server, which runs persistently in tmux
+        local tmux_session="acfs-services"
+        local install_cmd="curl -fsSL 'https://raw.githubusercontent.com/Dicklesworthstone/mcp_agent_mail/main/scripts/install.sh' | bash -s -- --dir '$TARGET_HOME/mcp_agent_mail' --yes"
+
+        # Kill existing session if any (clean slate)
+        run_as_target tmux kill-session -t "$tmux_session" 2>/dev/null || true
+
+        # Create new detached session and run the installer
+        if try_step "Installing MCP Agent Mail in tmux" run_as_target tmux new-session -d -s "$tmux_session" "$install_cmd"; then
+            log_success "MCP Agent Mail installing in tmux session '$tmux_session'"
+            log_info "Attach with: tmux attach -t $tmux_session"
+            # Give it a moment to start
+            sleep 5
+        else
+            log_warn "MCP Agent Mail tmux installation may have failed"
+        fi
     fi
 
     # Ultimate Bug Scanner
