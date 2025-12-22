@@ -75,7 +75,7 @@ graph LR
     end
 
     subgraph wizard ["Wizard Website"]
-        STEPS["10-Step Guide"]
+        STEPS["13-Step Guide"]
     end
 
     subgraph vps ["Fresh VPS"]
@@ -113,11 +113,12 @@ graph LR
 ### For Beginners
 ACFS includes a **step-by-step wizard website** at [agent-flywheel.com](https://agent-flywheel.com) that guides complete beginners through:
 1. Installing a terminal on their local machine
-2. Generating SSH keys
+2. Generating SSH keys (for secure access later)
 3. Renting a VPS from providers like OVH, Contabo, or Hetzner
-4. Connecting via SSH
-5. Running the installer
-6. Starting to code with AI agents
+4. Connecting via SSH with a password (initial setup)
+5. Running the installer (which sets up key-based access)
+6. Reconnecting securely with your SSH key
+7. Starting to code with AI agents
 
 ### For Developers
 ACFS is a **one-liner** that transforms any fresh Ubuntu VPS into a fully-configured development environment with modern tooling and three AI coding agents ready to go.
