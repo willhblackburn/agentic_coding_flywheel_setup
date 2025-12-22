@@ -36,6 +36,8 @@ export interface VerifiedInstaller {
   runner: VerifiedInstallerRunner;
   /** Optional additional args for runner */
   args?: string[];
+  /** Fallback URL for direct install if verified install fails */
+  fallback_url?: string;
 }
 
 /**

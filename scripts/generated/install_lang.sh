@@ -66,21 +66,33 @@ install_lang_bun() {
         log_info "dry-run: verified installer: lang.bun"
     else
         if ! {
-            # Verified upstream installer script (checksums.yaml)
-            if ! acfs_security_init; then
-                log_error "Security verification unavailable for lang.bun"
-                false
-            else
-                local tool="bun"
-                local url="${KNOWN_INSTALLERS[$tool]:-}"
-                local expected_sha256
-                expected_sha256="$(get_checksum "$tool")"
-                if [[ -z "$url" ]] || [[ -z "$expected_sha256" ]]; then
-                    log_error "Missing checksum entry for $tool"
-                    false
-                else
-                    verify_checksum "$url" "$expected_sha256" "$tool" | run_as_target_runner 'bash'
+            # Try security-verified install first, fall back to direct install
+            local install_success=false
+
+            if acfs_security_init 2>/dev/null; then
+                # Check if KNOWN_INSTALLERS is available as an associative array (declare -A)
+                # The grep ensures we specifically have an associative array, not just any variable
+                if declare -p KNOWN_INSTALLERS 2>/dev/null | grep -q 'declare -A'; then
+                    local tool="bun"
+                    local url=""
+                    local expected_sha256=""
+
+                    # Safe access with explicit empty default
+                    url="${KNOWN_INSTALLERS[$tool]:-}"
+                    expected_sha256="$(get_checksum "$tool" 2>/dev/null)" || expected_sha256=""
+
+                    if [[ -n "$url" ]] && [[ -n "$expected_sha256" ]]; then
+                        if verify_checksum "$url" "$expected_sha256" "$tool" 2>/dev/null | run_as_target_runner 'bash'; then
+                            install_success=true
+                        fi
+                    fi
                 fi
+            fi
+
+            # No fallback URL - verified install is required
+            if [[ "$install_success" != "true" ]]; then
+                log_error "Verified install failed for lang.bun and no fallback available"
+                false
             fi
         }; then
             log_error "lang.bun: verified installer failed"
@@ -114,21 +126,33 @@ install_lang_uv() {
         log_info "dry-run: verified installer: lang.uv"
     else
         if ! {
-            # Verified upstream installer script (checksums.yaml)
-            if ! acfs_security_init; then
-                log_error "Security verification unavailable for lang.uv"
-                false
-            else
-                local tool="uv"
-                local url="${KNOWN_INSTALLERS[$tool]:-}"
-                local expected_sha256
-                expected_sha256="$(get_checksum "$tool")"
-                if [[ -z "$url" ]] || [[ -z "$expected_sha256" ]]; then
-                    log_error "Missing checksum entry for $tool"
-                    false
-                else
-                    verify_checksum "$url" "$expected_sha256" "$tool" | run_as_target_runner 'sh'
+            # Try security-verified install first, fall back to direct install
+            local install_success=false
+
+            if acfs_security_init 2>/dev/null; then
+                # Check if KNOWN_INSTALLERS is available as an associative array (declare -A)
+                # The grep ensures we specifically have an associative array, not just any variable
+                if declare -p KNOWN_INSTALLERS 2>/dev/null | grep -q 'declare -A'; then
+                    local tool="uv"
+                    local url=""
+                    local expected_sha256=""
+
+                    # Safe access with explicit empty default
+                    url="${KNOWN_INSTALLERS[$tool]:-}"
+                    expected_sha256="$(get_checksum "$tool" 2>/dev/null)" || expected_sha256=""
+
+                    if [[ -n "$url" ]] && [[ -n "$expected_sha256" ]]; then
+                        if verify_checksum "$url" "$expected_sha256" "$tool" 2>/dev/null | run_as_target_runner 'sh'; then
+                            install_success=true
+                        fi
+                    fi
                 fi
+            fi
+
+            # No fallback URL - verified install is required
+            if [[ "$install_success" != "true" ]]; then
+                log_error "Verified install failed for lang.uv and no fallback available"
+                false
             fi
         }; then
             log_error "lang.uv: verified installer failed"
@@ -162,21 +186,33 @@ install_lang_rust() {
         log_info "dry-run: verified installer: lang.rust"
     else
         if ! {
-            # Verified upstream installer script (checksums.yaml)
-            if ! acfs_security_init; then
-                log_error "Security verification unavailable for lang.rust"
-                false
-            else
-                local tool="rust"
-                local url="${KNOWN_INSTALLERS[$tool]:-}"
-                local expected_sha256
-                expected_sha256="$(get_checksum "$tool")"
-                if [[ -z "$url" ]] || [[ -z "$expected_sha256" ]]; then
-                    log_error "Missing checksum entry for $tool"
-                    false
-                else
-                    verify_checksum "$url" "$expected_sha256" "$tool" | run_as_target_runner 'sh' '-s' '--' '-y'
+            # Try security-verified install first, fall back to direct install
+            local install_success=false
+
+            if acfs_security_init 2>/dev/null; then
+                # Check if KNOWN_INSTALLERS is available as an associative array (declare -A)
+                # The grep ensures we specifically have an associative array, not just any variable
+                if declare -p KNOWN_INSTALLERS 2>/dev/null | grep -q 'declare -A'; then
+                    local tool="rust"
+                    local url=""
+                    local expected_sha256=""
+
+                    # Safe access with explicit empty default
+                    url="${KNOWN_INSTALLERS[$tool]:-}"
+                    expected_sha256="$(get_checksum "$tool" 2>/dev/null)" || expected_sha256=""
+
+                    if [[ -n "$url" ]] && [[ -n "$expected_sha256" ]]; then
+                        if verify_checksum "$url" "$expected_sha256" "$tool" 2>/dev/null | run_as_target_runner 'sh' '-s' '--' '-y'; then
+                            install_success=true
+                        fi
+                    fi
                 fi
+            fi
+
+            # No fallback URL - verified install is required
+            if [[ "$install_success" != "true" ]]; then
+                log_error "Verified install failed for lang.rust and no fallback available"
+                false
             fi
         }; then
             log_error "lang.rust: verified installer failed"

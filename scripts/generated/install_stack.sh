@@ -66,21 +66,33 @@ install_stack_ntm() {
         log_info "dry-run: verified installer: stack.ntm"
     else
         if ! {
-            # Verified upstream installer script (checksums.yaml)
-            if ! acfs_security_init; then
-                log_error "Security verification unavailable for stack.ntm"
-                false
-            else
-                local tool="ntm"
-                local url="${KNOWN_INSTALLERS[$tool]:-}"
-                local expected_sha256
-                expected_sha256="$(get_checksum "$tool")"
-                if [[ -z "$url" ]] || [[ -z "$expected_sha256" ]]; then
-                    log_error "Missing checksum entry for $tool"
-                    false
-                else
-                    verify_checksum "$url" "$expected_sha256" "$tool" | run_as_target_runner 'bash'
+            # Try security-verified install first, fall back to direct install
+            local install_success=false
+
+            if acfs_security_init 2>/dev/null; then
+                # Check if KNOWN_INSTALLERS is available as an associative array (declare -A)
+                # The grep ensures we specifically have an associative array, not just any variable
+                if declare -p KNOWN_INSTALLERS 2>/dev/null | grep -q 'declare -A'; then
+                    local tool="ntm"
+                    local url=""
+                    local expected_sha256=""
+
+                    # Safe access with explicit empty default
+                    url="${KNOWN_INSTALLERS[$tool]:-}"
+                    expected_sha256="$(get_checksum "$tool" 2>/dev/null)" || expected_sha256=""
+
+                    if [[ -n "$url" ]] && [[ -n "$expected_sha256" ]]; then
+                        if verify_checksum "$url" "$expected_sha256" "$tool" 2>/dev/null | run_as_target_runner 'bash'; then
+                            install_success=true
+                        fi
+                    fi
                 fi
+            fi
+
+            # No fallback URL - verified install is required
+            if [[ "$install_success" != "true" ]]; then
+                log_error "Verified install failed for stack.ntm and no fallback available"
+                false
             fi
         }; then
             log_error "stack.ntm: verified installer failed"
@@ -114,21 +126,33 @@ install_stack_mcp_agent_mail() {
         log_info "dry-run: verified installer: stack.mcp_agent_mail"
     else
         if ! {
-            # Verified upstream installer script (checksums.yaml)
-            if ! acfs_security_init; then
-                log_error "Security verification unavailable for stack.mcp_agent_mail"
-                false
-            else
-                local tool="mcp_agent_mail"
-                local url="${KNOWN_INSTALLERS[$tool]:-}"
-                local expected_sha256
-                expected_sha256="$(get_checksum "$tool")"
-                if [[ -z "$url" ]] || [[ -z "$expected_sha256" ]]; then
-                    log_error "Missing checksum entry for $tool"
-                    false
-                else
-                    verify_checksum "$url" "$expected_sha256" "$tool" | run_as_target_runner 'bash' '--yes'
+            # Try security-verified install first, fall back to direct install
+            local install_success=false
+
+            if acfs_security_init 2>/dev/null; then
+                # Check if KNOWN_INSTALLERS is available as an associative array (declare -A)
+                # The grep ensures we specifically have an associative array, not just any variable
+                if declare -p KNOWN_INSTALLERS 2>/dev/null | grep -q 'declare -A'; then
+                    local tool="mcp_agent_mail"
+                    local url=""
+                    local expected_sha256=""
+
+                    # Safe access with explicit empty default
+                    url="${KNOWN_INSTALLERS[$tool]:-}"
+                    expected_sha256="$(get_checksum "$tool" 2>/dev/null)" || expected_sha256=""
+
+                    if [[ -n "$url" ]] && [[ -n "$expected_sha256" ]]; then
+                        if verify_checksum "$url" "$expected_sha256" "$tool" 2>/dev/null | run_as_target_runner 'bash' '--yes'; then
+                            install_success=true
+                        fi
+                    fi
                 fi
+            fi
+
+            # No fallback URL - verified install is required
+            if [[ "$install_success" != "true" ]]; then
+                log_error "Verified install failed for stack.mcp_agent_mail and no fallback available"
+                false
             fi
         }; then
             log_error "stack.mcp_agent_mail: verified installer failed"
@@ -172,21 +196,33 @@ install_stack_ultimate_bug_scanner() {
         log_info "dry-run: verified installer: stack.ultimate_bug_scanner"
     else
         if ! {
-            # Verified upstream installer script (checksums.yaml)
-            if ! acfs_security_init; then
-                log_error "Security verification unavailable for stack.ultimate_bug_scanner"
-                false
-            else
-                local tool="ubs"
-                local url="${KNOWN_INSTALLERS[$tool]:-}"
-                local expected_sha256
-                expected_sha256="$(get_checksum "$tool")"
-                if [[ -z "$url" ]] || [[ -z "$expected_sha256" ]]; then
-                    log_error "Missing checksum entry for $tool"
-                    false
-                else
-                    verify_checksum "$url" "$expected_sha256" "$tool" | run_as_target_runner 'bash' '--easy-mode'
+            # Try security-verified install first, fall back to direct install
+            local install_success=false
+
+            if acfs_security_init 2>/dev/null; then
+                # Check if KNOWN_INSTALLERS is available as an associative array (declare -A)
+                # The grep ensures we specifically have an associative array, not just any variable
+                if declare -p KNOWN_INSTALLERS 2>/dev/null | grep -q 'declare -A'; then
+                    local tool="ubs"
+                    local url=""
+                    local expected_sha256=""
+
+                    # Safe access with explicit empty default
+                    url="${KNOWN_INSTALLERS[$tool]:-}"
+                    expected_sha256="$(get_checksum "$tool" 2>/dev/null)" || expected_sha256=""
+
+                    if [[ -n "$url" ]] && [[ -n "$expected_sha256" ]]; then
+                        if verify_checksum "$url" "$expected_sha256" "$tool" 2>/dev/null | run_as_target_runner 'bash' '--easy-mode'; then
+                            install_success=true
+                        fi
+                    fi
                 fi
+            fi
+
+            # No fallback URL - verified install is required
+            if [[ "$install_success" != "true" ]]; then
+                log_error "Verified install failed for stack.ultimate_bug_scanner and no fallback available"
+                false
             fi
         }; then
             log_error "stack.ultimate_bug_scanner: verified installer failed"
@@ -230,21 +266,33 @@ install_stack_beads_viewer() {
         log_info "dry-run: verified installer: stack.beads_viewer"
     else
         if ! {
-            # Verified upstream installer script (checksums.yaml)
-            if ! acfs_security_init; then
-                log_error "Security verification unavailable for stack.beads_viewer"
-                false
-            else
-                local tool="bv"
-                local url="${KNOWN_INSTALLERS[$tool]:-}"
-                local expected_sha256
-                expected_sha256="$(get_checksum "$tool")"
-                if [[ -z "$url" ]] || [[ -z "$expected_sha256" ]]; then
-                    log_error "Missing checksum entry for $tool"
-                    false
-                else
-                    verify_checksum "$url" "$expected_sha256" "$tool" | run_as_target_runner 'bash'
+            # Try security-verified install first, fall back to direct install
+            local install_success=false
+
+            if acfs_security_init 2>/dev/null; then
+                # Check if KNOWN_INSTALLERS is available as an associative array (declare -A)
+                # The grep ensures we specifically have an associative array, not just any variable
+                if declare -p KNOWN_INSTALLERS 2>/dev/null | grep -q 'declare -A'; then
+                    local tool="bv"
+                    local url=""
+                    local expected_sha256=""
+
+                    # Safe access with explicit empty default
+                    url="${KNOWN_INSTALLERS[$tool]:-}"
+                    expected_sha256="$(get_checksum "$tool" 2>/dev/null)" || expected_sha256=""
+
+                    if [[ -n "$url" ]] && [[ -n "$expected_sha256" ]]; then
+                        if verify_checksum "$url" "$expected_sha256" "$tool" 2>/dev/null | run_as_target_runner 'bash'; then
+                            install_success=true
+                        fi
+                    fi
                 fi
+            fi
+
+            # No fallback URL - verified install is required
+            if [[ "$install_success" != "true" ]]; then
+                log_error "Verified install failed for stack.beads_viewer and no fallback available"
+                false
             fi
         }; then
             log_error "stack.beads_viewer: verified installer failed"
@@ -278,21 +326,33 @@ install_stack_cass() {
         log_info "dry-run: verified installer: stack.cass"
     else
         if ! {
-            # Verified upstream installer script (checksums.yaml)
-            if ! acfs_security_init; then
-                log_error "Security verification unavailable for stack.cass"
-                false
-            else
-                local tool="cass"
-                local url="${KNOWN_INSTALLERS[$tool]:-}"
-                local expected_sha256
-                expected_sha256="$(get_checksum "$tool")"
-                if [[ -z "$url" ]] || [[ -z "$expected_sha256" ]]; then
-                    log_error "Missing checksum entry for $tool"
-                    false
-                else
-                    verify_checksum "$url" "$expected_sha256" "$tool" | run_as_target_runner 'bash' '--easy-mode' '--verify'
+            # Try security-verified install first, fall back to direct install
+            local install_success=false
+
+            if acfs_security_init 2>/dev/null; then
+                # Check if KNOWN_INSTALLERS is available as an associative array (declare -A)
+                # The grep ensures we specifically have an associative array, not just any variable
+                if declare -p KNOWN_INSTALLERS 2>/dev/null | grep -q 'declare -A'; then
+                    local tool="cass"
+                    local url=""
+                    local expected_sha256=""
+
+                    # Safe access with explicit empty default
+                    url="${KNOWN_INSTALLERS[$tool]:-}"
+                    expected_sha256="$(get_checksum "$tool" 2>/dev/null)" || expected_sha256=""
+
+                    if [[ -n "$url" ]] && [[ -n "$expected_sha256" ]]; then
+                        if verify_checksum "$url" "$expected_sha256" "$tool" 2>/dev/null | run_as_target_runner 'bash' '--easy-mode' '--verify'; then
+                            install_success=true
+                        fi
+                    fi
                 fi
+            fi
+
+            # No fallback URL - verified install is required
+            if [[ "$install_success" != "true" ]]; then
+                log_error "Verified install failed for stack.cass and no fallback available"
+                false
             fi
         }; then
             log_error "stack.cass: verified installer failed"
@@ -326,21 +386,33 @@ install_stack_cm() {
         log_info "dry-run: verified installer: stack.cm"
     else
         if ! {
-            # Verified upstream installer script (checksums.yaml)
-            if ! acfs_security_init; then
-                log_error "Security verification unavailable for stack.cm"
-                false
-            else
-                local tool="cm"
-                local url="${KNOWN_INSTALLERS[$tool]:-}"
-                local expected_sha256
-                expected_sha256="$(get_checksum "$tool")"
-                if [[ -z "$url" ]] || [[ -z "$expected_sha256" ]]; then
-                    log_error "Missing checksum entry for $tool"
-                    false
-                else
-                    verify_checksum "$url" "$expected_sha256" "$tool" | run_as_target_runner 'bash' '--easy-mode' '--verify'
+            # Try security-verified install first, fall back to direct install
+            local install_success=false
+
+            if acfs_security_init 2>/dev/null; then
+                # Check if KNOWN_INSTALLERS is available as an associative array (declare -A)
+                # The grep ensures we specifically have an associative array, not just any variable
+                if declare -p KNOWN_INSTALLERS 2>/dev/null | grep -q 'declare -A'; then
+                    local tool="cm"
+                    local url=""
+                    local expected_sha256=""
+
+                    # Safe access with explicit empty default
+                    url="${KNOWN_INSTALLERS[$tool]:-}"
+                    expected_sha256="$(get_checksum "$tool" 2>/dev/null)" || expected_sha256=""
+
+                    if [[ -n "$url" ]] && [[ -n "$expected_sha256" ]]; then
+                        if verify_checksum "$url" "$expected_sha256" "$tool" 2>/dev/null | run_as_target_runner 'bash' '--easy-mode' '--verify'; then
+                            install_success=true
+                        fi
+                    fi
                 fi
+            fi
+
+            # No fallback URL - verified install is required
+            if [[ "$install_success" != "true" ]]; then
+                log_error "Verified install failed for stack.cm and no fallback available"
+                false
             fi
         }; then
             log_error "stack.cm: verified installer failed"
@@ -384,21 +456,33 @@ install_stack_caam() {
         log_info "dry-run: verified installer: stack.caam"
     else
         if ! {
-            # Verified upstream installer script (checksums.yaml)
-            if ! acfs_security_init; then
-                log_error "Security verification unavailable for stack.caam"
-                false
-            else
-                local tool="caam"
-                local url="${KNOWN_INSTALLERS[$tool]:-}"
-                local expected_sha256
-                expected_sha256="$(get_checksum "$tool")"
-                if [[ -z "$url" ]] || [[ -z "$expected_sha256" ]]; then
-                    log_error "Missing checksum entry for $tool"
-                    false
-                else
-                    verify_checksum "$url" "$expected_sha256" "$tool" | run_as_target_runner 'bash'
+            # Try security-verified install first, fall back to direct install
+            local install_success=false
+
+            if acfs_security_init 2>/dev/null; then
+                # Check if KNOWN_INSTALLERS is available as an associative array (declare -A)
+                # The grep ensures we specifically have an associative array, not just any variable
+                if declare -p KNOWN_INSTALLERS 2>/dev/null | grep -q 'declare -A'; then
+                    local tool="caam"
+                    local url=""
+                    local expected_sha256=""
+
+                    # Safe access with explicit empty default
+                    url="${KNOWN_INSTALLERS[$tool]:-}"
+                    expected_sha256="$(get_checksum "$tool" 2>/dev/null)" || expected_sha256=""
+
+                    if [[ -n "$url" ]] && [[ -n "$expected_sha256" ]]; then
+                        if verify_checksum "$url" "$expected_sha256" "$tool" 2>/dev/null | run_as_target_runner 'bash'; then
+                            install_success=true
+                        fi
+                    fi
                 fi
+            fi
+
+            # No fallback URL - verified install is required
+            if [[ "$install_success" != "true" ]]; then
+                log_error "Verified install failed for stack.caam and no fallback available"
+                false
             fi
         }; then
             log_error "stack.caam: verified installer failed"
@@ -432,21 +516,33 @@ install_stack_slb() {
         log_info "dry-run: verified installer: stack.slb"
     else
         if ! {
-            # Verified upstream installer script (checksums.yaml)
-            if ! acfs_security_init; then
-                log_error "Security verification unavailable for stack.slb"
-                false
-            else
-                local tool="slb"
-                local url="${KNOWN_INSTALLERS[$tool]:-}"
-                local expected_sha256
-                expected_sha256="$(get_checksum "$tool")"
-                if [[ -z "$url" ]] || [[ -z "$expected_sha256" ]]; then
-                    log_error "Missing checksum entry for $tool"
-                    false
-                else
-                    verify_checksum "$url" "$expected_sha256" "$tool" | run_as_target_runner 'bash'
+            # Try security-verified install first, fall back to direct install
+            local install_success=false
+
+            if acfs_security_init 2>/dev/null; then
+                # Check if KNOWN_INSTALLERS is available as an associative array (declare -A)
+                # The grep ensures we specifically have an associative array, not just any variable
+                if declare -p KNOWN_INSTALLERS 2>/dev/null | grep -q 'declare -A'; then
+                    local tool="slb"
+                    local url=""
+                    local expected_sha256=""
+
+                    # Safe access with explicit empty default
+                    url="${KNOWN_INSTALLERS[$tool]:-}"
+                    expected_sha256="$(get_checksum "$tool" 2>/dev/null)" || expected_sha256=""
+
+                    if [[ -n "$url" ]] && [[ -n "$expected_sha256" ]]; then
+                        if verify_checksum "$url" "$expected_sha256" "$tool" 2>/dev/null | run_as_target_runner 'bash'; then
+                            install_success=true
+                        fi
+                    fi
                 fi
+            fi
+
+            # No fallback URL - verified install is required
+            if [[ "$install_success" != "true" ]]; then
+                log_error "Verified install failed for stack.slb and no fallback available"
+                false
             fi
         }; then
             log_warn "stack.slb: verified installer failed"

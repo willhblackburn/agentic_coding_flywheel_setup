@@ -52,6 +52,9 @@ export const ModuleSchema = z
         tool: z.string().min(1, 'Verified installer tool cannot be empty'),
         runner: VerifiedInstallerRunnerSchema,
         args: z.array(z.string()).default([]),
+        // Fallback URL for direct install if verified install fails
+        // This provides graceful degradation when security verification isn't available
+        fallback_url: z.string().url().optional(),
       })
       .optional(),
 

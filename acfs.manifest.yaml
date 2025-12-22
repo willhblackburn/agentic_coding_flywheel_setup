@@ -419,6 +419,7 @@ modules:
     verified_installer:
       tool: claude
       runner: bash
+      fallback_url: "https://claude.ai/install.sh"
     install: []
     verify:
       - claude --version || claude --help

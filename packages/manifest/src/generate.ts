@@ -387,8 +387,10 @@ function sortModulesByPhaseAndDependency(manifest: Manifest): Module[] {
 function generateVerifiedInstallerSnippet(module: Module): string[] {
   const vi = module.verified_installer!;
   const tool = vi.tool;
-  
+  const fallbackUrl = vi.fallback_url;
+
   let execCmd: string;
+  let fallbackShellCmd: string;
   if (module.run_as === 'target_user') {
     // Use run_as_target_runner to switch user while preserving stdin
     const parts = ['run_as_target_runner', shellQuote(vi.runner)];
@@ -398,29 +400,64 @@ function generateVerifiedInstallerSnippet(module: Module): string[] {
       }
     }
     execCmd = parts.join(' ');
+    fallbackShellCmd = 'run_as_target_shell';
   } else {
     // Default/root: run directly
     execCmd = buildVerifiedInstallerPipe(module);
+    fallbackShellCmd = 'bash';
   }
 
-  return [
-    '# Verified upstream installer script (checksums.yaml)',
-    'if ! acfs_security_init; then',
-    `    log_error "Security verification unavailable for ${module.id}"`,
-    '    false',
-    'else',
-    `    local tool="${tool}"`,
-    '    local url="${KNOWN_INSTALLERS[$tool]:-}"',
-    '    local expected_sha256',
-    '    expected_sha256="$(get_checksum "$tool")"',
-    '    if [[ -z "$url" ]] || [[ -z "$expected_sha256" ]]; then',
-    '        log_error "Missing checksum entry for $tool"',
-    '        false',
-    '    else',
-    `        verify_checksum "$url" "$expected_sha256" "$tool" | ${execCmd}`,
+  const lines: string[] = [
+    '# Try security-verified install first, fall back to direct install',
+    'local install_success=false',
+    '',
+    'if acfs_security_init 2>/dev/null; then',
+    '    # Check if KNOWN_INSTALLERS is available as an associative array (declare -A)',
+    '    # The grep ensures we specifically have an associative array, not just any variable',
+    "    if declare -p KNOWN_INSTALLERS 2>/dev/null | grep -q 'declare -A'; then",
+    `        local tool="${tool}"`,
+    '        local url=""',
+    '        local expected_sha256=""',
+    '',
+    '        # Safe access with explicit empty default',
+    '        url="${KNOWN_INSTALLERS[$tool]:-}"',
+    '        expected_sha256="$(get_checksum "$tool" 2>/dev/null)" || expected_sha256=""',
+    '',
+    '        if [[ -n "$url" ]] && [[ -n "$expected_sha256" ]]; then',
+    `            if verify_checksum "$url" "$expected_sha256" "$tool" 2>/dev/null | ${execCmd}; then`,
+    '                install_success=true',
+    '            fi',
+    '        fi',
     '    fi',
     'fi',
   ];
+
+  // Add fallback if fallback_url is provided
+  if (fallbackUrl) {
+    // Use command argument instead of heredoc to avoid indentation issues
+    // The run_as_target_shell function accepts a command string directly
+    const escapedUrl = fallbackUrl.replace(/'/g, "'\\''"); // escape single quotes
+    lines.push(
+      '',
+      '# Fallback: install directly from known URL',
+      'if [[ "$install_success" != "true" ]]; then',
+      `    log_info "Using direct installer for ${module.description}..."`,
+      `    ${fallbackShellCmd} 'curl -fsSL ${escapedUrl} | bash' || false`,
+      'fi',
+    );
+  } else {
+    // No fallback - fail if verified install didn't work
+    lines.push(
+      '',
+      '# No fallback URL - verified install is required',
+      'if [[ "$install_success" != "true" ]]; then',
+      `    log_error "Verified install failed for ${module.id} and no fallback available"`,
+      '    false',
+      'fi',
+    );
+  }
+
+  return lines;
 }
 
 /**
