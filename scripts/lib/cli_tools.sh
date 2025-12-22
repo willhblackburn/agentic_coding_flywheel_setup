@@ -531,6 +531,12 @@ get_cli_tool_versions() {
     _cli_command_exists gum && echo "  gum: $(gum --version)"
     _cli_command_exists atuin && echo "  atuin: $(atuin --version)"
     _cli_command_exists docker && echo "  docker: $(docker --version)"
+    _cli_command_exists yq && echo "  yq: $(yq --version)"
+    _cli_command_exists tldr && echo "  tldr: $(tldr --version 2>/dev/null || echo 'installed')"
+    _cli_command_exists delta && echo "  delta: $(delta --version)"
+    _cli_command_exists tree && echo "  tree: $(tree --version | head -1)"
+    _cli_command_exists ncdu && echo "  ncdu: $(ncdu --version 2>/dev/null | head -1 || echo 'installed')"
+    _cli_command_exists http && echo "  httpie: $(http --version)"
 }
 
 # ============================================================
@@ -553,6 +559,7 @@ install_all_cli_tools() {
     # Other installers
     install_lazygit
     install_lazydocker
+    install_yq
     install_atuin
 
     # Docker
