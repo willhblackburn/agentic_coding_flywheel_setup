@@ -516,16 +516,8 @@ export default function RentVPSPage() {
       </SimplerGuide>
 
       {/* Transition to next step */}
-      <AlertCard variant="info" icon={Info} title="Account created? Great!">
-        <div className="space-y-2">
-          <p>
-            Now you need to actually <strong>launch a server</strong>. Having an account is
-            like having a Netflix subscription — you still need to pick something to watch.
-          </p>
-          <p className="text-sm text-muted-foreground">
-            The next step walks you through creating your actual VPS instance inside your new account.
-          </p>
-        </div>
+      <AlertCard variant="info" icon={Info} title="Account created?">
+        Next, you&apos;ll create and launch your actual VPS instance.
       </AlertCard>
 
       {/* Continue button */}
