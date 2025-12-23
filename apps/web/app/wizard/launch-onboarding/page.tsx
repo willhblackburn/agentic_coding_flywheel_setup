@@ -167,20 +167,35 @@ export default function LaunchOnboardingPage() {
               <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[oklch(0.78_0.16_75)] text-[oklch(0.15_0.02_75)] font-bold text-sm">1</div>
               <div>
                 <p className="font-medium">Claude Code</p>
-                <CommandCard command="claude" description="Opens a URL in your terminal — copy it and open in your laptop's browser to log in" />
+                <CommandCard
+                  command="claude"
+                  description="Follow the prompts. If it prints a URL, open it on your laptop to log in."
+                />
               </div>
             </div>
             <div className="flex gap-3">
               <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[oklch(0.78_0.16_75)] text-[oklch(0.15_0.02_75)] font-bold text-sm">2</div>
               <div>
                 <p className="font-medium">Codex CLI (if using OpenAI)</p>
-                <CommandCard command="codex" description="Similar authentication flow for OpenAI's Codex CLI" />
+                <CommandCard
+                  command="codex login"
+                  description="Starts the login flow. If it prints a URL, open it on your laptop to authenticate."
+                />
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[oklch(0.78_0.16_75)] text-[oklch(0.15_0.02_75)] font-bold text-sm">3</div>
+              <div>
+                <p className="font-medium">Gemini CLI (optional)</p>
+                <CommandCard command="gemini" description="Follow the prompts to authenticate (Google account)." />
               </div>
             </div>
           </div>
           <GuideTip>
-            After authenticating, you can use the shortcuts: <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">cc</code> for Claude Code,{" "}
-            <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">cx</code> for Codex CLI.
+            After authenticating, you can use the shortcuts (vibe mode):{" "}
+            <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">cc</code> (Claude),{" "}
+            <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">cod</code> (Codex),{" "}
+            <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">gmi</code> (Gemini).
           </GuideTip>
         </div>
       </Card>
