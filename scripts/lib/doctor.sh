@@ -861,9 +861,9 @@ load_skipped_tools() {
             done < <(jq -r '.skipped_tools | to_entries[]? | "\(.key):\(.value)"' "$state_file" 2>/dev/null)
         fi
     else
-        # Fallback: basic grep for array format
+        # Fallback: basic sed for array format (POSIX-compatible, works on macOS/BSD)
         local skipped
-        skipped=$(grep -oP '"skipped_tools"\s*:\s*\[\K[^\]]+' "$state_file" 2>/dev/null | tr -d '", ')
+        skipped=$(sed -n 's/.*"skipped_tools"[[:space:]]*:[[:space:]]*\[\([^]]*\)\].*/\1/p' "$state_file" 2>/dev/null | tr -d '", ')
         for tool in $skipped; do
             [[ -n "$tool" ]] && SKIPPED_TOOLS_DATA+=("$tool:user choice")
         done

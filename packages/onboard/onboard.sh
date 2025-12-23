@@ -367,8 +367,10 @@ check_auth_status() {
 # Echoes: 0 (authed), 1 (needs auth), 2 (not installed)
 get_auth_status_code() {
     local service=$1
-    check_auth_status "$service"
-    echo "$?"
+    local status
+    # Capture exit code safely under set -e
+    check_auth_status "$service" && status=0 || status=$?
+    echo "$status"
 }
 
 # Get auth status display for a service

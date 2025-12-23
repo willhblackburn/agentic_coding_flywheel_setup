@@ -342,8 +342,9 @@ state_get() {
     else
         # Basic fallback for simple keys (no nested paths)
         # This is a simplified parser - prefer having jq installed
+        # Uses sed instead of grep -oP for POSIX compatibility (macOS, BSD)
         local simple_key="${key#.}"
-        echo "$state" | grep -oP "\"${simple_key}\"\s*:\s*\K[^,}]+" | tr -d '"' | head -1
+        echo "$state" | sed -n "s/.*\"${simple_key}\"[[:space:]]*:[[:space:]]*\([^,}]*\).*/\1/p" | tr -d '"' | head -1
     fi
 }
 
@@ -677,8 +678,11 @@ state_validate() {
         fi
 
     else
-        # Basic fallback without jq - just check for opening/closing braces
-        if [[ ! "$content" =~ ^\{.*\}$ ]]; then
+        # Basic fallback without jq - check first/last non-whitespace chars are braces
+        # Note: We can't use ^\{.*\}$ regex because bash regex doesn't match newlines with .
+        local trimmed
+        trimmed="$(printf '%s' "$content" | tr -d '[:space:]')"
+        if [[ "${trimmed:0:1}" != "{" ]] || [[ "${trimmed: -1}" != "}" ]]; then
             echo "State file is not valid JSON (no jq available for detailed check)" >&2
             return 2
         fi
@@ -689,9 +693,9 @@ state_validate() {
             return 5
         fi
 
-        # Extract version number
+        # Extract version number using sed (POSIX-compatible, works on macOS/BSD)
         local version
-        version=$(grep -oP '"schema_version"\s*:\s*\K[0-9]+' "$state_file" || echo "")
+        version=$(sed -n 's/.*"schema_version"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p' "$state_file" | head -1)
         if [[ -z "$version" ]] || [[ "$version" == "1" ]]; then
             return 5
         fi
@@ -881,8 +885,9 @@ state_check_version() {
         version=$(echo "$state" | jq -r '.schema_version // 1')
     else
         # Fallback: if no schema_version field, assume v1
+        # Uses sed for POSIX compatibility (macOS/BSD don't have grep -oP)
         if grep -q '"schema_version"' "$state_file"; then
-            version=$(grep -oP '"schema_version"\s*:\s*\K[0-9]+' "$state_file")
+            version=$(sed -n 's/.*"schema_version"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p' "$state_file" | head -1)
         else
             version=1
         fi
