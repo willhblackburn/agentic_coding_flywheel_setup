@@ -44,7 +44,7 @@ This is the exact flow ACFS must nail:
 | 1 | Choose laptop OS (Mac/Windows) | Show appropriate terminal/SSH instructions |
 | 2 | Install a good terminal | Link to Ghostty/WezTerm (Mac) or Windows Terminal |
 | 3 | Generate SSH key | Provide copy-paste command |
-| 4 | Rent a VPS (~$50/mo) | Guide through OVH/Contabo/Hetzner |
+| 4 | Rent a VPS (~$40-56/mo) | Guide through OVH/Contabo (not Hetzner - new accounts have waiting period) |
 | 5 | Choose Ubuntu 25.x image | Highlight exact selection |
 | 6 | Paste SSH public key in provider UI | Screenshot guidance |
 | 7 | SSH into server | Copy-paste command |

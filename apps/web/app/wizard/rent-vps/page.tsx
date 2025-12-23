@@ -141,10 +141,10 @@ function ProviderCard({ provider, isExpanded, onToggle }: ProviderCardProps) {
 
 const SPEC_CHECKLIST = [
   { label: "OS", value: "Ubuntu 24.x or newer" },
-  { label: "CPU", value: "12+ vCPU" },
-  { label: "RAM", value: "48GB+ (32GB absolute minimum)" },
+  { label: "CPU", value: "12-16 vCPU" },
+  { label: "RAM", value: "64GB recommended (48GB workable, 32GB minimum)" },
   { label: "Storage", value: "250GB+ NVMe SSD" },
-  { label: "Price", value: "~$26-56/month (month-to-month)" },
+  { label: "Price", value: "~$40-56/month for 64GB (month-to-month)" },
 ];
 
 export default function RentVPSPage() {
@@ -369,7 +369,7 @@ export default function RentVPSPage() {
             </div>
             <div className="mt-4 rounded-lg border border-[oklch(0.65_0.12_30/0.3)] bg-[oklch(0.65_0.12_30/0.08)] p-3">
               <p className="text-sm text-muted-foreground">
-                <strong>⚠️ Realistic minimum investment:</strong> VPS (~$26-56/month) + Claude Max ($200/month) + GPT Pro ($200/month) = <strong>~$426-456/month</strong>.
+                <strong>⚠️ Realistic minimum investment:</strong> VPS (~$40-56/month for 64GB) + Claude Max ($200/month) + GPT Pro ($200/month) = <strong>~$440-456/month</strong>.
                 The $20/month Claude Pro tier does <em>not</em> have enough capacity for agentic workflows; you&apos;ll
                 hit rate limits almost immediately. Claude Max is required for execution, and GPT Pro&apos;s extended
                 thinking is essential for creating the detailed plan documents that make this approach work.

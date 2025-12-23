@@ -82,22 +82,22 @@ const PROVIDER_GUIDES = [
   {
     name: "Contabo",
     steps: [
-      "Go to contabo.com/en/vps and pick a plan with at least 16GB RAM (32GB ideal)",
-      'Click "Configure" and select your preferred region (US or EU)',
-      'Under "Image", select Ubuntu 25.10 (or newest available)',
+      "Go to contabo.com/en-us/vps and select Cloud VPS 50 (64GB RAM, ~$56/month) or Cloud VPS 40 (48GB, ~$36/month)",
+      'Click "Configure" and select your preferred region (US recommended for best latency)',
+      'Under "Image", select Ubuntu 25.10 (or newest available; 24.04 LTS is fine too)',
       'Set a root password when prompted (save it - you\'ll need it once)',
-      "Complete checkout (servers activate within minutes)",
+      "Complete checkout (servers activate within minutes, occasionally up to 1 hour)",
       'Go to "Your services" > "VPS control" to find your IP address',
     ],
   },
   {
     name: "OVH",
     steps: [
-      'Click "Order" on VPS Comfort (16GB) or VPS Elite (32GB)',
-      'Under "Image", select Ubuntu 25.10 (or latest)',
-      "Pick the data center/region closest to you",
-      'Choose "Password" authentication (skip SSH key section)',
-      "Set a strong root password and save it",
+      'Click "Order" on VPS-5 (64GB RAM, ~$40/month) or VPS-4 (48GB, ~$26/month)',
+      'Under "Image", select Ubuntu 25.10 (or latest available)',
+      "Pick the data center/region closest to you (US-East, US-West, or EU)",
+      'Choose "Password" authentication (skip SSH key section for now)',
+      "Set a strong root password and save it somewhere safe",
       "Complete the order (activation is usually instant)",
       "Copy the IP address from your control panel",
     ],
@@ -334,11 +334,15 @@ export default function CreateVPSPage() {
                 <GuideStep number={6} title="Choose your plan size">
                   Look for a plan with:
                   <ul className="mt-2 list-disc space-y-1 pl-5">
-                    <li>4-8 vCPU (virtual CPUs)</li>
-                    <li>8-16 GB RAM (memory)</li>
-                    <li>100GB+ storage</li>
-                    <li>Cost should be around $30-60/month</li>
+                    <li>12-16 vCPU (virtual CPUs)</li>
+                    <li>48-64 GB RAM (each AI agent uses ~2GB, you want to run 10+)</li>
+                    <li>250GB+ NVMe storage</li>
+                    <li>Cost: ~$40-56/month for 64GB (worth it!)</li>
                   </ul>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    64GB is strongly recommended. You&apos;re investing $400+/month in AI subscriptions,
+                    so don&apos;t bottleneck that with insufficient RAM.
+                  </p>
                 </GuideStep>
 
                 <GuideStep number={7} title="Create and wait">

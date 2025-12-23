@@ -685,9 +685,9 @@ function IsThisForYouSection() {
 
 // "What Does This Cost?" Pricing Section
 const PRICING_ITEMS = [
-  { name: "Cloud VPS", price: "$26–56", period: "/month", description: "Ubuntu server (Hetzner, Vultr, etc.)", icon: Server, gradient: "from-sky-400 to-blue-500", note: "4-8 vCPUs recommended" },
+  { name: "Cloud VPS", price: "$40–56", period: "/month", description: "64GB RAM Ubuntu server (Contabo, OVH)", icon: Server, gradient: "from-sky-400 to-blue-500", note: "64GB RAM for 10+ agents" },
   { name: "Claude Max", price: "$200", period: "/month", description: "Anthropic's Claude Code CLI", icon: Bot, gradient: "from-amber-400 to-orange-500", note: "$400 for power users (2 accounts)" },
-  { name: "GPT Pro", price: "$200", period: "/month", description: "OpenAI's Codex CLI access", icon: Cpu, gradient: "from-emerald-400 to-teal-500", note: "Optional but recommended" },
+  { name: "GPT Pro", price: "$200", period: "/month", description: "Extended Thinking for detailed planning", icon: Cpu, gradient: "from-emerald-400 to-teal-500", note: "Essential for plan documents" },
 ];
 
 function WhatDoesThisCostSection() {
@@ -737,7 +737,7 @@ function WhatDoesThisCostSection() {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Estimated Monthly Total</p>
                 <p className="font-mono text-2xl font-bold sm:text-3xl">
-                  <span className="text-gradient-cosmic">$426 – $656</span>
+                  <span className="text-gradient-cosmic">$440 – $656</span>
                   <span className="text-base font-normal text-muted-foreground">/month</span>
                 </p>
               </div>
