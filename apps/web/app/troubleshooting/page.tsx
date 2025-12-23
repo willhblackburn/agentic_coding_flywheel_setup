@@ -384,6 +384,153 @@ const ISSUES: Omit<TroubleshootingIssue, "searchable">[] = [
     ],
     prevention: "This is expected on first login. Just press 'q' to skip if unsure.",
   },
+  {
+    id: "ssh-host-key-changed",
+    title: "Host Key Verification Failed",
+    category: "ssh",
+    symptoms: [
+      "WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!",
+      "Host key verification failed",
+      "Offending key in known_hosts",
+    ],
+    causes: [
+      "You recreated your VPS but kept the same IP address",
+      "The VPS was reinstalled with a new OS",
+      "You're connecting to a different server with the same IP",
+    ],
+    solutions: [
+      {
+        title: "Remove the old host key (Mac/Linux)",
+        steps: [
+          "If you just recreated your VPS, this is expected",
+          "Remove the old key and connect again",
+          "You'll be prompted to accept the new key",
+        ],
+        command: "ssh-keygen -R YOUR_VPS_IP",
+      },
+      {
+        title: "Remove the old host key (Windows)",
+        steps: [
+          "Open the known_hosts file in Notepad",
+          "Delete the line containing your VPS IP",
+          "Save and try connecting again",
+        ],
+        command: "notepad %USERPROFILE%\\.ssh\\known_hosts",
+      },
+    ],
+    prevention: "This warning is a security feature. Only remove old keys if you know why the key changed (e.g., VPS reinstall).",
+  },
+  {
+    id: "ssh-too-many-auth",
+    title: "Too Many Authentication Failures",
+    category: "ssh",
+    symptoms: [
+      "Too many authentication failures",
+      "Received disconnect from host: Too many authentication failures",
+      "Connection closed by remote host",
+    ],
+    causes: [
+      "You have multiple SSH keys and the client tries them all",
+      "Too many failed login attempts",
+      "SSH agent has too many keys loaded",
+    ],
+    solutions: [
+      {
+        title: "Specify the exact key to use",
+        steps: [
+          "Tell SSH to only use your specific key file",
+          "The IdentitiesOnly option prevents trying other keys",
+        ],
+        command: "ssh -i ~/.ssh/acfs_ed25519 -o IdentitiesOnly=yes ubuntu@YOUR_VPS_IP",
+      },
+      {
+        title: "Clear SSH agent keys",
+        steps: [
+          "If you have many keys loaded in your SSH agent",
+          "Clear them all and add only the one you need",
+        ],
+        command: "ssh-add -D && ssh-add ~/.ssh/acfs_ed25519",
+      },
+    ],
+    prevention: "Use an SSH config file to specify which key to use for each server.",
+  },
+  {
+    id: "ssh-slow-connection",
+    title: "SSH Connection is Slow",
+    category: "ssh",
+    symptoms: [
+      "Connection takes 30+ seconds",
+      "Hangs after 'Connecting to...'",
+      "Delays after password/key accepted",
+    ],
+    causes: [
+      "DNS reverse lookup on the server",
+      "GSSAPI authentication trying to connect to Kerberos",
+      "Slow network route between you and VPS",
+    ],
+    solutions: [
+      {
+        title: "Disable GSSAPI authentication (quick fix)",
+        steps: [
+          "Add this option to skip Kerberos authentication",
+          "This often fixes slow connections immediately",
+        ],
+        command: "ssh -o GSSAPIAuthentication=no ubuntu@YOUR_VPS_IP",
+      },
+      {
+        title: "Make it permanent in SSH config",
+        steps: [
+          "Add to your ~/.ssh/config file:",
+          "Host *",
+          "  GSSAPIAuthentication no",
+          "  ServerAliveInterval 60",
+        ],
+      },
+    ],
+    prevention: "Configure SSH options in ~/.ssh/config for persistent settings.",
+  },
+  {
+    id: "vps-provider-verification",
+    title: "VPS Provider Account Verification Pending",
+    category: "network",
+    symptoms: [
+      "Cannot log into VPS provider dashboard",
+      "Account pending verification",
+      "Payment not processed",
+    ],
+    causes: [
+      "New accounts often require identity verification",
+      "Credit card verification still processing",
+      "Email not verified",
+    ],
+    solutions: [
+      {
+        title: "Complete email verification",
+        steps: [
+          "Check your email inbox and spam folder",
+          "Click the verification link from the provider",
+          "Some providers require you to reply to a verification email",
+        ],
+      },
+      {
+        title: "Wait for payment processing",
+        steps: [
+          "New credit cards can take up to 24 hours to verify",
+          "Prepaid cards may not be accepted",
+          "Contact provider support if payment is stuck",
+        ],
+      },
+      {
+        title: "Check for identity verification request",
+        steps: [
+          "Some providers (especially Contabo) require ID verification",
+          "Check your email for requests for additional documents",
+          "This is more common for new accounts with large orders",
+        ],
+      },
+    ],
+    prevention: "Use a verified payment method and respond promptly to verification emails.",
+  },
 ];
 
 // Build searchable index
