@@ -74,7 +74,7 @@ install_stack_ntm() {
             # Try security-verified install (no unverified fallback; fail closed)
             local install_success=false
 
-            if acfs_security_init 2>/dev/null; then
+            if acfs_security_init; then
                 # Check if KNOWN_INSTALLERS is available as an associative array (declare -A)
                 # The grep ensures we specifically have an associative array, not just any variable
                 if declare -p KNOWN_INSTALLERS 2>/dev/null | grep -q 'declare -A'; then
@@ -84,10 +84,10 @@ install_stack_ntm() {
 
                     # Safe access with explicit empty default
                     url="${KNOWN_INSTALLERS[$tool]:-}"
-                    expected_sha256="$(get_checksum "$tool" 2>/dev/null)" || expected_sha256=""
+                    expected_sha256="$(get_checksum "$tool")" || expected_sha256=""
 
                     if [[ -n "$url" ]] && [[ -n "$expected_sha256" ]]; then
-                        if verify_checksum "$url" "$expected_sha256" "$tool" 2>/dev/null | run_as_target_runner 'bash' '-s'; then
+                        if verify_checksum "$url" "$expected_sha256" "$tool" | run_as_target_runner 'bash' '-s'; then
                             install_success=true
                         fi
                     fi
@@ -139,10 +139,10 @@ install_stack_mcp_agent_mail() {
             local tool="mcp_agent_mail"
             local url=""
             local expected_sha256=""
-            if acfs_security_init 2>/dev/null; then
+            if acfs_security_init; then
                 if declare -p KNOWN_INSTALLERS 2>/dev/null | grep -q 'declare -A'; then
                     url="${KNOWN_INSTALLERS[$tool]:-}"
-                    expected_sha256="$(get_checksum "$tool" 2>/dev/null)" || expected_sha256=""
+                    expected_sha256="$(get_checksum "$tool")" || expected_sha256=""
                 fi
             fi
 
@@ -204,7 +204,7 @@ install_stack_ultimate_bug_scanner() {
             # Try security-verified install (no unverified fallback; fail closed)
             local install_success=false
 
-            if acfs_security_init 2>/dev/null; then
+            if acfs_security_init; then
                 # Check if KNOWN_INSTALLERS is available as an associative array (declare -A)
                 # The grep ensures we specifically have an associative array, not just any variable
                 if declare -p KNOWN_INSTALLERS 2>/dev/null | grep -q 'declare -A'; then
@@ -214,10 +214,10 @@ install_stack_ultimate_bug_scanner() {
 
                     # Safe access with explicit empty default
                     url="${KNOWN_INSTALLERS[$tool]:-}"
-                    expected_sha256="$(get_checksum "$tool" 2>/dev/null)" || expected_sha256=""
+                    expected_sha256="$(get_checksum "$tool")" || expected_sha256=""
 
                     if [[ -n "$url" ]] && [[ -n "$expected_sha256" ]]; then
-                        if verify_checksum "$url" "$expected_sha256" "$tool" 2>/dev/null | run_as_target_runner 'bash' '-s' '--' '--easy-mode'; then
+                        if verify_checksum "$url" "$expected_sha256" "$tool" | run_as_target_runner 'bash' '-s' '--' '--easy-mode'; then
                             install_success=true
                         fi
                     fi
@@ -274,7 +274,7 @@ install_stack_beads_viewer() {
             # Try security-verified install (no unverified fallback; fail closed)
             local install_success=false
 
-            if acfs_security_init 2>/dev/null; then
+            if acfs_security_init; then
                 # Check if KNOWN_INSTALLERS is available as an associative array (declare -A)
                 # The grep ensures we specifically have an associative array, not just any variable
                 if declare -p KNOWN_INSTALLERS 2>/dev/null | grep -q 'declare -A'; then
@@ -284,10 +284,10 @@ install_stack_beads_viewer() {
 
                     # Safe access with explicit empty default
                     url="${KNOWN_INSTALLERS[$tool]:-}"
-                    expected_sha256="$(get_checksum "$tool" 2>/dev/null)" || expected_sha256=""
+                    expected_sha256="$(get_checksum "$tool")" || expected_sha256=""
 
                     if [[ -n "$url" ]] && [[ -n "$expected_sha256" ]]; then
-                        if verify_checksum "$url" "$expected_sha256" "$tool" 2>/dev/null | run_as_target_runner 'bash' '-s'; then
+                        if verify_checksum "$url" "$expected_sha256" "$tool" | run_as_target_runner 'bash' '-s'; then
                             install_success=true
                         fi
                     fi
@@ -334,7 +334,7 @@ install_stack_cass() {
             # Try security-verified install (no unverified fallback; fail closed)
             local install_success=false
 
-            if acfs_security_init 2>/dev/null; then
+            if acfs_security_init; then
                 # Check if KNOWN_INSTALLERS is available as an associative array (declare -A)
                 # The grep ensures we specifically have an associative array, not just any variable
                 if declare -p KNOWN_INSTALLERS 2>/dev/null | grep -q 'declare -A'; then
@@ -344,10 +344,10 @@ install_stack_cass() {
 
                     # Safe access with explicit empty default
                     url="${KNOWN_INSTALLERS[$tool]:-}"
-                    expected_sha256="$(get_checksum "$tool" 2>/dev/null)" || expected_sha256=""
+                    expected_sha256="$(get_checksum "$tool")" || expected_sha256=""
 
                     if [[ -n "$url" ]] && [[ -n "$expected_sha256" ]]; then
-                        if verify_checksum "$url" "$expected_sha256" "$tool" 2>/dev/null | run_as_target_runner 'bash' '-s' '--' '--easy-mode' '--verify'; then
+                        if verify_checksum "$url" "$expected_sha256" "$tool" | run_as_target_runner 'bash' '-s' '--' '--easy-mode' '--verify'; then
                             install_success=true
                         fi
                     fi
@@ -394,7 +394,7 @@ install_stack_cm() {
             # Try security-verified install (no unverified fallback; fail closed)
             local install_success=false
 
-            if acfs_security_init 2>/dev/null; then
+            if acfs_security_init; then
                 # Check if KNOWN_INSTALLERS is available as an associative array (declare -A)
                 # The grep ensures we specifically have an associative array, not just any variable
                 if declare -p KNOWN_INSTALLERS 2>/dev/null | grep -q 'declare -A'; then
@@ -404,10 +404,10 @@ install_stack_cm() {
 
                     # Safe access with explicit empty default
                     url="${KNOWN_INSTALLERS[$tool]:-}"
-                    expected_sha256="$(get_checksum "$tool" 2>/dev/null)" || expected_sha256=""
+                    expected_sha256="$(get_checksum "$tool")" || expected_sha256=""
 
                     if [[ -n "$url" ]] && [[ -n "$expected_sha256" ]]; then
-                        if verify_checksum "$url" "$expected_sha256" "$tool" 2>/dev/null | run_as_target_runner 'bash' '-s' '--' '--easy-mode' '--verify'; then
+                        if verify_checksum "$url" "$expected_sha256" "$tool" | run_as_target_runner 'bash' '-s' '--' '--easy-mode' '--verify'; then
                             install_success=true
                         fi
                     fi
@@ -464,7 +464,7 @@ install_stack_caam() {
             # Try security-verified install (no unverified fallback; fail closed)
             local install_success=false
 
-            if acfs_security_init 2>/dev/null; then
+            if acfs_security_init; then
                 # Check if KNOWN_INSTALLERS is available as an associative array (declare -A)
                 # The grep ensures we specifically have an associative array, not just any variable
                 if declare -p KNOWN_INSTALLERS 2>/dev/null | grep -q 'declare -A'; then
@@ -474,10 +474,10 @@ install_stack_caam() {
 
                     # Safe access with explicit empty default
                     url="${KNOWN_INSTALLERS[$tool]:-}"
-                    expected_sha256="$(get_checksum "$tool" 2>/dev/null)" || expected_sha256=""
+                    expected_sha256="$(get_checksum "$tool")" || expected_sha256=""
 
                     if [[ -n "$url" ]] && [[ -n "$expected_sha256" ]]; then
-                        if verify_checksum "$url" "$expected_sha256" "$tool" 2>/dev/null | run_as_target_runner 'bash' '-s'; then
+                        if verify_checksum "$url" "$expected_sha256" "$tool" | run_as_target_runner 'bash' '-s'; then
                             install_success=true
                         fi
                     fi

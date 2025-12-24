@@ -74,7 +74,7 @@ install_lang_bun() {
             # Try security-verified install (no unverified fallback; fail closed)
             local install_success=false
 
-            if acfs_security_init 2>/dev/null; then
+            if acfs_security_init; then
                 # Check if KNOWN_INSTALLERS is available as an associative array (declare -A)
                 # The grep ensures we specifically have an associative array, not just any variable
                 if declare -p KNOWN_INSTALLERS 2>/dev/null | grep -q 'declare -A'; then
@@ -84,10 +84,10 @@ install_lang_bun() {
 
                     # Safe access with explicit empty default
                     url="${KNOWN_INSTALLERS[$tool]:-}"
-                    expected_sha256="$(get_checksum "$tool" 2>/dev/null)" || expected_sha256=""
+                    expected_sha256="$(get_checksum "$tool")" || expected_sha256=""
 
                     if [[ -n "$url" ]] && [[ -n "$expected_sha256" ]]; then
-                        if verify_checksum "$url" "$expected_sha256" "$tool" 2>/dev/null | run_as_target_runner 'bash' '-s'; then
+                        if verify_checksum "$url" "$expected_sha256" "$tool" | run_as_target_runner 'bash' '-s'; then
                             install_success=true
                         fi
                     fi
@@ -134,7 +134,7 @@ install_lang_uv() {
             # Try security-verified install (no unverified fallback; fail closed)
             local install_success=false
 
-            if acfs_security_init 2>/dev/null; then
+            if acfs_security_init; then
                 # Check if KNOWN_INSTALLERS is available as an associative array (declare -A)
                 # The grep ensures we specifically have an associative array, not just any variable
                 if declare -p KNOWN_INSTALLERS 2>/dev/null | grep -q 'declare -A'; then
@@ -144,10 +144,10 @@ install_lang_uv() {
 
                     # Safe access with explicit empty default
                     url="${KNOWN_INSTALLERS[$tool]:-}"
-                    expected_sha256="$(get_checksum "$tool" 2>/dev/null)" || expected_sha256=""
+                    expected_sha256="$(get_checksum "$tool")" || expected_sha256=""
 
                     if [[ -n "$url" ]] && [[ -n "$expected_sha256" ]]; then
-                        if verify_checksum "$url" "$expected_sha256" "$tool" 2>/dev/null | run_as_target_runner 'sh' '-s'; then
+                        if verify_checksum "$url" "$expected_sha256" "$tool" | run_as_target_runner 'sh' '-s'; then
                             install_success=true
                         fi
                     fi
@@ -194,7 +194,7 @@ install_lang_rust() {
             # Try security-verified install (no unverified fallback; fail closed)
             local install_success=false
 
-            if acfs_security_init 2>/dev/null; then
+            if acfs_security_init; then
                 # Check if KNOWN_INSTALLERS is available as an associative array (declare -A)
                 # The grep ensures we specifically have an associative array, not just any variable
                 if declare -p KNOWN_INSTALLERS 2>/dev/null | grep -q 'declare -A'; then
@@ -204,10 +204,10 @@ install_lang_rust() {
 
                     # Safe access with explicit empty default
                     url="${KNOWN_INSTALLERS[$tool]:-}"
-                    expected_sha256="$(get_checksum "$tool" 2>/dev/null)" || expected_sha256=""
+                    expected_sha256="$(get_checksum "$tool")" || expected_sha256=""
 
                     if [[ -n "$url" ]] && [[ -n "$expected_sha256" ]]; then
-                        if verify_checksum "$url" "$expected_sha256" "$tool" 2>/dev/null | run_as_target_runner 'sh' '-s' '--' '-y' '--default-toolchain' 'nightly'; then
+                        if verify_checksum "$url" "$expected_sha256" "$tool" | run_as_target_runner 'sh' '-s' '--' '-y' '--default-toolchain' 'nightly'; then
                             install_success=true
                         fi
                     fi
@@ -299,7 +299,7 @@ install_lang_nvm() {
             # Try security-verified install (no unverified fallback; fail closed)
             local install_success=false
 
-            if acfs_security_init 2>/dev/null; then
+            if acfs_security_init; then
                 # Check if KNOWN_INSTALLERS is available as an associative array (declare -A)
                 # The grep ensures we specifically have an associative array, not just any variable
                 if declare -p KNOWN_INSTALLERS 2>/dev/null | grep -q 'declare -A'; then
@@ -309,10 +309,10 @@ install_lang_nvm() {
 
                     # Safe access with explicit empty default
                     url="${KNOWN_INSTALLERS[$tool]:-}"
-                    expected_sha256="$(get_checksum "$tool" 2>/dev/null)" || expected_sha256=""
+                    expected_sha256="$(get_checksum "$tool")" || expected_sha256=""
 
                     if [[ -n "$url" ]] && [[ -n "$expected_sha256" ]]; then
-                        if verify_checksum "$url" "$expected_sha256" "$tool" 2>/dev/null | run_as_target_runner 'bash' '-s'; then
+                        if verify_checksum "$url" "$expected_sha256" "$tool" | run_as_target_runner 'bash' '-s'; then
                             install_success=true
                         fi
                     fi

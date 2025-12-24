@@ -68,15 +68,15 @@ install_cloud_wrangler() {
     log_step "Installing cloud.wrangler"
 
     if [[ "${DRY_RUN:-false}" == "true" ]]; then
-        log_info "dry-run: install: ~/.bun/bin/bun install -g wrangler (target_user)"
+        log_info "dry-run: install: ~/.bun/bin/bun install -g --trust wrangler (target_user)"
     else
         if ! run_as_target_shell <<'INSTALL_CLOUD_WRANGLER'
-~/.bun/bin/bun install -g wrangler
+~/.bun/bin/bun install -g --trust wrangler
 INSTALL_CLOUD_WRANGLER
         then
-            log_warn "cloud.wrangler: install command failed: ~/.bun/bin/bun install -g wrangler"
+            log_warn "cloud.wrangler: install command failed: ~/.bun/bin/bun install -g --trust wrangler"
             if type -t record_skipped_tool >/dev/null 2>&1; then
-              record_skipped_tool "cloud.wrangler" "install command failed: ~/.bun/bin/bun install -g wrangler"
+              record_skipped_tool "cloud.wrangler" "install command failed: ~/.bun/bin/bun install -g --trust wrangler"
             elif type -t state_tool_skip >/dev/null 2>&1; then
               state_tool_skip "cloud.wrangler"
             fi
@@ -112,15 +112,15 @@ install_cloud_supabase() {
     log_step "Installing cloud.supabase"
 
     if [[ "${DRY_RUN:-false}" == "true" ]]; then
-        log_info "dry-run: install: ~/.bun/bin/bun install -g supabase (target_user)"
+        log_info "dry-run: install: ~/.bun/bin/bun install -g --trust supabase (target_user)"
     else
         if ! run_as_target_shell <<'INSTALL_CLOUD_SUPABASE'
-~/.bun/bin/bun install -g supabase
+~/.bun/bin/bun install -g --trust supabase
 INSTALL_CLOUD_SUPABASE
         then
-            log_warn "cloud.supabase: install command failed: ~/.bun/bin/bun install -g supabase"
+            log_warn "cloud.supabase: install command failed: ~/.bun/bin/bun install -g --trust supabase"
             if type -t record_skipped_tool >/dev/null 2>&1; then
-              record_skipped_tool "cloud.supabase" "install command failed: ~/.bun/bin/bun install -g supabase"
+              record_skipped_tool "cloud.supabase" "install command failed: ~/.bun/bin/bun install -g --trust supabase"
             elif type -t state_tool_skip >/dev/null 2>&1; then
               state_tool_skip "cloud.supabase"
             fi
@@ -156,15 +156,15 @@ install_cloud_vercel() {
     log_step "Installing cloud.vercel"
 
     if [[ "${DRY_RUN:-false}" == "true" ]]; then
-        log_info "dry-run: install: ~/.bun/bin/bun install -g vercel (target_user)"
+        log_info "dry-run: install: ~/.bun/bin/bun install -g --trust vercel (target_user)"
     else
         if ! run_as_target_shell <<'INSTALL_CLOUD_VERCEL'
-~/.bun/bin/bun install -g vercel
+~/.bun/bin/bun install -g --trust vercel
 INSTALL_CLOUD_VERCEL
         then
-            log_warn "cloud.vercel: install command failed: ~/.bun/bin/bun install -g vercel"
+            log_warn "cloud.vercel: install command failed: ~/.bun/bin/bun install -g --trust vercel"
             if type -t record_skipped_tool >/dev/null 2>&1; then
-              record_skipped_tool "cloud.vercel" "install command failed: ~/.bun/bin/bun install -g vercel"
+              record_skipped_tool "cloud.vercel" "install command failed: ~/.bun/bin/bun install -g --trust vercel"
             elif type -t state_tool_skip >/dev/null 2>&1; then
               state_tool_skip "cloud.vercel"
             fi

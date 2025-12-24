@@ -598,7 +598,8 @@ modules:
       run_as: target_user
       command: "command -v wrangler"
     install:
-      - ~/.bun/bin/bun install -g wrangler
+      # Use --trust to allow postinstall scripts (downloads native binary)
+      - ~/.bun/bin/bun install -g --trust wrangler
     verify:
       - wrangler --version
 
@@ -616,7 +617,8 @@ modules:
       run_as: target_user
       command: "command -v supabase"
     install:
-      - ~/.bun/bin/bun install -g supabase
+      # Use --trust to allow postinstall scripts (downloads native binary)
+      - ~/.bun/bin/bun install -g --trust supabase
     verify:
       - supabase --version
 
@@ -634,7 +636,8 @@ modules:
       run_as: target_user
       command: "command -v vercel"
     install:
-      - ~/.bun/bin/bun install -g vercel
+      # Use --trust to allow postinstall scripts (downloads native binary)
+      - ~/.bun/bin/bun install -g --trust vercel
     verify:
       - vercel --version
 
