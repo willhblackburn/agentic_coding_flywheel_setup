@@ -1,7 +1,7 @@
 /**
  * Lesson Progress Configuration
  *
- * Defines the 9 lessons of the ACFS Learning Hub.
+ * Defines the 15 lessons of the ACFS Learning Hub.
  * Each lesson teaches a core concept for agentic development.
  * Uses TanStack Query for React state management with localStorage persistence.
  */
@@ -97,6 +97,54 @@ export const LESSONS: Lesson[] = [
     description: "Maintain and upgrade your environment",
     duration: "4 min",
     file: "08_keeping_updated.md",
+  },
+  {
+    id: 9,
+    slug: "ubs",
+    title: "UBS: Code Quality Guardrails",
+    description: "Catch bugs before they reach production",
+    duration: "8 min",
+    file: "09_ubs.md",
+  },
+  {
+    id: 10,
+    slug: "agent-mail",
+    title: "Agent Mail Coordination",
+    description: "Multi-agent messaging and file reservations",
+    duration: "10 min",
+    file: "10_agent_mail.md",
+  },
+  {
+    id: 11,
+    slug: "cass",
+    title: "CASS: Learning from History",
+    description: "Search across all past agent sessions",
+    duration: "8 min",
+    file: "11_cass.md",
+  },
+  {
+    id: 12,
+    slug: "cm",
+    title: "The Memory System",
+    description: "Build procedural memory for agents",
+    duration: "8 min",
+    file: "12_cm.md",
+  },
+  {
+    id: 13,
+    slug: "beads",
+    title: "Beads: Issue Tracking",
+    description: "Graph-aware task management with dependencies",
+    duration: "8 min",
+    file: "13_beads.md",
+  },
+  {
+    id: 14,
+    slug: "safety-tools",
+    title: "Safety Tools: SLB & CAAM",
+    description: "Two-person rule and account management",
+    duration: "6 min",
+    file: "14_safety_tools.md",
   },
 ];
 

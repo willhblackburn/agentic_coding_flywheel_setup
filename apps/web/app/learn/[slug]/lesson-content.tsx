@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useCallback, useRef, useMemo } from "react";
-import { getLessonComponent } from "@/components/lessons";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { renderLessonComponent } from "@/components/lessons";
 import {
   ArrowLeft,
   ArrowRight,
@@ -311,9 +311,7 @@ export function LessonContent({ lesson }: Props) {
     };
   }, []);
 
-  // Dynamic component selection based on lesson slug - this is a legitimate pattern
-  // for route-based content rendering. The component is stable per slug.
-  const LessonComponent = useMemo(() => getLessonComponent(lesson.slug), [lesson.slug]);
+  const lessonContent = renderLessonComponent(lesson.slug);
 
   const wizardStepSlugByLesson: Record<string, string> = {
     welcome: "launch-onboarding",
@@ -539,9 +537,8 @@ export function LessonContent({ lesson }: Props) {
 
               {/* Custom lesson content */}
               <article>
-                {LessonComponent ? (
-                  // eslint-disable-next-line react-hooks/static-components
-                  <LessonComponent />
+                {lessonContent ? (
+                  lessonContent
                 ) : (
                   <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-orange-500/10 p-8 text-center">
                     <p className="text-white/70">Lesson content not found for: {lesson.slug}</p>

@@ -119,6 +119,7 @@ export function CodeBlock({
           )}
         </div>
         <button
+          type="button"
           onClick={handleCopy}
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 text-white/40 hover:text-white hover:bg-white/10"
         >
@@ -318,6 +319,7 @@ export function CommandList({ commands }: CommandListProps) {
           className="group flex items-center gap-4 rounded-xl border border-white/[0.08] bg-white/[0.02] p-4 transition-all duration-300 hover:border-white/[0.15] hover:bg-white/[0.04]"
         >
           <button
+            type="button"
             onClick={() => handleCopy(cmd.command, i)}
             className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/40 border border-white/[0.08] font-mono text-sm text-emerald-400 transition-all duration-300 hover:bg-black/60 hover:border-emerald-500/30"
           >
