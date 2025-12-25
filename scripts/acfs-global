@@ -78,12 +78,15 @@ main() {
 
     # If we're root, run as target user
     if [[ "$EUID" -eq 0 ]]; then
-        exec sudo -u "$target_user" -i "$acfs_bin" "$@"
+        # IMPORTANT: Avoid `sudo -i` which sources shell profile files.
+        # Third-party installers sometimes modify those files in ways that can
+        # break non-interactive runs. We set HOME with `-H` but preserve CWD.
+        exec sudo -u "$target_user" -H -- "$acfs_bin" "$@"
     fi
 
     # Otherwise, we need sudo to switch users
     echo "Note: Running acfs as '$target_user' (ACFS owner)" >&2
-    exec sudo -u "$target_user" -i "$acfs_bin" "$@"
+    exec sudo -u "$target_user" -H -- "$acfs_bin" "$@"
 }
 
 main "$@"

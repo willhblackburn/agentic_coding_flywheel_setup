@@ -553,12 +553,14 @@ _run_shell_with_strict_mode() {
     local env_setup="export PATH=\"$path_prefix:\$PATH\" UV_NO_CONFIG=1"
 
     if [[ -n "$cmd" ]]; then
-        bash -lc "$env_setup; set -euo pipefail; $cmd"
+        # IMPORTANT: Avoid `bash -l` (login shell). Third-party installers can
+        # leave broken profile files that would break non-interactive runs.
+        bash -c "$env_setup; set -euo pipefail; $cmd"
         return $?
     fi
 
     # stdin mode (supports heredocs/pipes)
-    bash -lc "$env_setup; set -euo pipefail; (printf '%s\n' 'set -euo pipefail'; cat) | bash -s"
+    bash -c "$env_setup; set -euo pipefail; (printf '%s\n' 'set -euo pipefail'; cat) | bash -s"
 }
 
 # Run a shell string (or stdin) as TARGET_USER
@@ -576,12 +578,13 @@ run_as_target_shell() {
     local env_setup="export PATH=\"$path_prefix:\$PATH\" UV_NO_CONFIG=1"
 
     if [[ -n "$cmd" ]]; then
-        run_as_target bash -lc "$env_setup; set -euo pipefail; $cmd"
+        # IMPORTANT: Avoid `bash -l` (login shell). Profile files are not a stable API.
+        run_as_target bash -c "$env_setup; set -euo pipefail; $cmd"
         return $?
     fi
 
     # stdin mode
-    run_as_target bash -lc "$env_setup; set -euo pipefail; (printf '%s\n' 'set -euo pipefail'; cat) | bash -s"
+    run_as_target bash -c "$env_setup; set -euo pipefail; (printf '%s\n' 'set -euo pipefail'; cat) | bash -s"
 }
 
 # Run a runner (bash, sh) with args as TARGET_USER, passing stdin
@@ -612,19 +615,19 @@ run_as_root_shell() {
 
     if [[ -n "${SUDO:-}" ]]; then
         if [[ -n "$cmd" ]]; then
-            $SUDO bash -lc "set -euo pipefail; $cmd"
+            $SUDO bash -c "set -euo pipefail; $cmd"
             return $?
         fi
-        $SUDO bash -lc 'set -euo pipefail; (printf "%s\n" "set -euo pipefail"; cat) | bash -s'
+        $SUDO bash -c 'set -euo pipefail; (printf "%s\n" "set -euo pipefail"; cat) | bash -s'
         return $?
     fi
 
     if command -v sudo >/dev/null 2>&1; then
         if [[ -n "$cmd" ]]; then
-            sudo bash -lc "set -euo pipefail; $cmd"
+            sudo bash -c "set -euo pipefail; $cmd"
             return $?
         fi
-        sudo bash -lc 'set -euo pipefail; (printf "%s\n" "set -euo pipefail"; cat) | bash -s'
+        sudo bash -c 'set -euo pipefail; (printf "%s\n" "set -euo pipefail"; cat) | bash -s'
         return $?
     fi
 
@@ -652,7 +655,7 @@ command_exists_as_target() {
         return 1
     fi
 
-    run_as_target bash -lc "command -v '$cmd' >/dev/null 2>&1"
+    run_as_target bash -c "command -v '$cmd' >/dev/null 2>&1"
 }
 
 # ------------------------------------------------------------
