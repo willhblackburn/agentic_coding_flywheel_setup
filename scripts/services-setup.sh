@@ -552,15 +552,19 @@ EOF
   }
 }
 EOF
-    else
-        local tmp
-        if command -v jq &>/dev/null; then
-            tmp="$(mktemp "${TMPDIR:-/tmp}/acfs_services.XXXXXX" 2>/dev/null)" || tmp="/tmp/acfs_services_temp.$$"
-            if jq --arg cmd "$installed_guard" '
-              .hooks = (.hooks // {}) |
-              .hooks.PreToolUse = (.hooks.PreToolUse // []) |
-              if (.hooks.PreToolUse | type) != "array" then
-                .hooks.PreToolUse = []
+	    else
+	        local tmp
+	        if command -v jq &>/dev/null; then
+	            tmp="$(mktemp "${TMPDIR:-/tmp}/acfs_services.XXXXXX" 2>/dev/null)" || tmp=""
+	            if [[ -z "$tmp" ]]; then
+	                gum_warn "Could not update $settings_file automatically (mktemp failed)"
+	                gum_detail "Manually add this hook command:"
+	                gum_detail "  $installed_guard"
+	            elif jq --arg cmd "$installed_guard" '
+	              .hooks = (.hooks // {}) |
+	              .hooks.PreToolUse = (.hooks.PreToolUse // []) |
+	              if (.hooks.PreToolUse | type) != "array" then
+	                .hooks.PreToolUse = []
               else .
               end |
               if ( [ .hooks.PreToolUse[]? | .hooks[]? | select(.type=="command") | .command ] | index($cmd) ) != null then
@@ -572,18 +576,19 @@ EOF
                 else
                   .hooks.PreToolUse[$bashKey].hooks = ((.hooks.PreToolUse[$bashKey].hooks // []) | if type=="array" then . else [] end) |
                   .hooks.PreToolUse[$bashKey].hooks += [{ "type":"command", "command":$cmd }]
-                end
-              end
-            ' "$settings_file" > "$tmp" 2>/dev/null; then
-                mv "$tmp" "$settings_file"
-            else
-                gum_warn "Could not update $settings_file automatically (invalid JSON?)"
-                gum_detail "Manually add this hook command:"
-                gum_detail "  $installed_guard"
-            fi
-        else
-            gum_warn "jq not found; cannot update $settings_file automatically"
-            gum_detail "Manually add this hook command:"
+	                end
+	              end
+	            ' "$settings_file" > "$tmp" 2>/dev/null; then
+	                mv "$tmp" "$settings_file"
+	            else
+	                rm -f "$tmp" 2>/dev/null || true
+	                gum_warn "Could not update $settings_file automatically (invalid JSON?)"
+	                gum_detail "Manually add this hook command:"
+	                gum_detail "  $installed_guard"
+	            fi
+	        else
+	            gum_warn "jq not found; cannot update $settings_file automatically"
+	            gum_detail "Manually add this hook command:"
             gum_detail "  $installed_guard"
         fi
     fi

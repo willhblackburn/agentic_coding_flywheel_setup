@@ -130,17 +130,26 @@ try_step() {
         echo "[TRY_STEP] $CURRENT_PHASE/$CURRENT_STEP_NUMBER: $description" >&2
     fi
 
-    # Create temp file for capturing output
-    local temp_output
-    temp_output=$(mktemp "${TMPDIR:-/tmp}/acfs_context.XXXXXX" 2>/dev/null) || temp_output="/tmp/acfs_context_output.$$"
-    trap 'rm -f "$temp_output"; trap - RETURN' RETURN
+    # Create temp file for capturing output.
+    # Never fall back to a predictable /tmp path (symlink/clobber risk under sudo/root).
+    local temp_output=""
+    temp_output=$(mktemp "${TMPDIR:-/tmp}/acfs_context.XXXXXX" 2>/dev/null) || temp_output=""
 
-    # Execute command, capturing both stdout and stderr
+    # Execute command, capturing both stdout and stderr when possible.
     local exit_code=0
-    if "$@" > "$temp_output" 2>&1; then
-        exit_code=0
+    if [[ -n "$temp_output" ]]; then
+        trap 'rm -f "$temp_output" 2>/dev/null || true; trap - RETURN' RETURN
+        if "$@" > "$temp_output" 2>&1; then
+            exit_code=0
+        else
+            exit_code=$?
+        fi
     else
-        exit_code=$?
+        if "$@"; then
+            exit_code=0
+        else
+            exit_code=$?
+        fi
     fi
 
     # Handle failure
@@ -171,17 +180,26 @@ try_step_eval() {
         echo "[TRY_STEP_EVAL] Command: $command_str" >&2
     fi
 
-    # Create temp file for capturing output
-    local temp_output
-    temp_output=$(mktemp "${TMPDIR:-/tmp}/acfs_context.XXXXXX" 2>/dev/null) || temp_output="/tmp/acfs_context_output.$$"
-    trap 'rm -f "$temp_output"; trap - RETURN' RETURN
+    # Create temp file for capturing output.
+    # Never fall back to a predictable /tmp path (symlink/clobber risk under sudo/root).
+    local temp_output=""
+    temp_output=$(mktemp "${TMPDIR:-/tmp}/acfs_context.XXXXXX" 2>/dev/null) || temp_output=""
 
-    # Execute command string via bash -c
+    # Execute command string via bash -c, capturing output when possible.
     local exit_code=0
-    if bash -c "$command_str" > "$temp_output" 2>&1; then
-        exit_code=0
+    if [[ -n "$temp_output" ]]; then
+        trap 'rm -f "$temp_output" 2>/dev/null || true; trap - RETURN' RETURN
+        if bash -c "$command_str" > "$temp_output" 2>&1; then
+            exit_code=0
+        else
+            exit_code=$?
+        fi
     else
-        exit_code=$?
+        if bash -c "$command_str"; then
+            exit_code=0
+        else
+            exit_code=$?
+        fi
     fi
 
     # Handle failure
@@ -201,10 +219,12 @@ _handle_step_failure() {
 
     ((TOTAL_STEPS_FAILED += 1))
 
-    # Capture full output
+    # Capture full output (best-effort).
     LAST_ERROR_OUTPUT=""
-    if [[ -f "$output_file" ]]; then
+    if [[ -n "$output_file" && -f "$output_file" ]]; then
         LAST_ERROR_OUTPUT=$(cat "$output_file")
+    else
+        LAST_ERROR_OUTPUT="(command output unavailable: mktemp failed)"
     fi
 
     # Truncate for LAST_ERROR (keep it manageable)

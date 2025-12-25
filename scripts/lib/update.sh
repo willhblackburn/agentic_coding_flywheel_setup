@@ -265,27 +265,62 @@ run_cmd() {
 
     log_item "run" "$desc"
 
-    local output=""
     local exit_code=0
-    output=$("$@" 2>&1) || exit_code=$?
+
+    # In verbose mode, stream command output to the console AND log file.
+    # In non-verbose mode, capture output for logging without flooding the terminal.
+    if [[ "$VERBOSE" == "true" ]]; then
+        if [[ -n "${UPDATE_LOG_FILE:-}" ]]; then
+            # Separate commands in the log for readability.
+            {
+                echo ""
+                echo "----- COMMAND: $cmd_display"
+            } >> "$UPDATE_LOG_FILE"
+        fi
+
+        if [[ "$QUIET" != "true" ]] && [[ -n "${UPDATE_LOG_FILE:-}" ]]; then
+            if "$@" 2>&1 | tee -a "$UPDATE_LOG_FILE"; then
+                exit_code=0
+            else
+                exit_code=${PIPESTATUS[0]}
+            fi
+        elif [[ -n "${UPDATE_LOG_FILE:-}" ]]; then
+            if "$@" >> "$UPDATE_LOG_FILE" 2>&1; then
+                exit_code=0
+            else
+                exit_code=$?
+            fi
+        else
+            # Should not happen (init_logging sets UPDATE_LOG_FILE), but keep a safe fallback.
+            if [[ "$QUIET" != "true" ]]; then
+                "$@" || exit_code=$?
+            else
+                "$@" >/dev/null 2>&1 || exit_code=$?
+            fi
+        fi
+    else
+        local output=""
+        output=$("$@" 2>&1) || exit_code=$?
+        [[ -n "$output" ]] && log_to_file "Output: $output"
+    fi
 
     if [[ $exit_code -eq 0 ]]; then
-        # Move cursor up and overwrite (only if not in quiet mode)
-        if [[ "$QUIET" != "true" ]]; then
+        # Move cursor up and overwrite (only in non-verbose, non-quiet mode)
+        if [[ "$QUIET" != "true" ]] && [[ "$VERBOSE" != "true" ]]; then
             echo -e "\033[1A\033[2K  ${GREEN}[ok]${NC} $desc"
+        elif [[ "$QUIET" != "true" ]]; then
+            echo -e "  ${GREEN}[ok]${NC} $desc"
         fi
         log_to_file "Success: $desc"
-        [[ -n "$output" ]] && log_to_file "Output: $output"
         ((SUCCESS_COUNT += 1))
         return 0
     else
-        if [[ "$QUIET" != "true" ]]; then
+        if [[ "$QUIET" != "true" ]] && [[ "$VERBOSE" != "true" ]]; then
             echo -e "\033[1A\033[2K  ${RED}[fail]${NC} $desc"
         else
             echo -e "  ${RED}[fail]${NC} $desc"
         fi
         log_to_file "Failed: $desc (exit code: $exit_code)"
-        [[ -n "$output" ]] && log_to_file "Output: $output"
         ((FAIL_COUNT += 1))
 
         # Handle abort-on-failure
@@ -582,24 +617,57 @@ run_cmd_claude_update() {
 
     log_item "run" "$desc"
 
-    local output=""
     local exit_code=0
-    output=$(claude update 2>&1) || exit_code=$?
+
+    if [[ "$VERBOSE" == "true" ]]; then
+        if [[ -n "${UPDATE_LOG_FILE:-}" ]]; then
+            {
+                echo ""
+                echo "----- COMMAND: $cmd_display"
+            } >> "$UPDATE_LOG_FILE"
+        fi
+
+        if [[ "$QUIET" != "true" ]] && [[ -n "${UPDATE_LOG_FILE:-}" ]]; then
+            if claude update 2>&1 | tee -a "$UPDATE_LOG_FILE"; then
+                exit_code=0
+            else
+                exit_code=${PIPESTATUS[0]}
+            fi
+        elif [[ -n "${UPDATE_LOG_FILE:-}" ]]; then
+            if claude update >> "$UPDATE_LOG_FILE" 2>&1; then
+                exit_code=0
+            else
+                exit_code=$?
+            fi
+        else
+            if [[ "$QUIET" != "true" ]]; then
+                claude update || exit_code=$?
+            else
+                claude update >/dev/null 2>&1 || exit_code=$?
+            fi
+        fi
+    else
+        local output=""
+        output=$(claude update 2>&1) || exit_code=$?
+        [[ -n "$output" ]] && log_to_file "Output: $output"
+    fi
 
     if [[ $exit_code -eq 0 ]]; then
-        if [[ "$QUIET" != "true" ]]; then
+        if [[ "$QUIET" != "true" ]] && [[ "$VERBOSE" != "true" ]]; then
             echo -e "\033[1A\033[2K  ${GREEN}[ok]${NC} $desc"
+        elif [[ "$QUIET" != "true" ]]; then
+            echo -e "  ${GREEN}[ok]${NC} $desc"
         fi
         log_to_file "Success: $desc"
-        [[ -n "$output" ]] && log_to_file "Output: $output"
         ((SUCCESS_COUNT += 1))
         return 0
     else
-        if [[ "$QUIET" != "true" ]]; then
+        if [[ "$QUIET" != "true" ]] && [[ "$VERBOSE" != "true" ]]; then
             echo -e "\033[1A\033[2K  ${YELLOW}[retry]${NC} $desc"
+        elif [[ "$QUIET" != "true" ]]; then
+            echo -e "  ${YELLOW}[retry]${NC} $desc"
         fi
         log_to_file "Failed: $desc (exit code: $exit_code), will try reinstall"
-        [[ -n "$output" ]] && log_to_file "Output: $output"
         return 1
     fi
 }

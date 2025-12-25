@@ -184,22 +184,25 @@ launch_continue_script() {
     # --no-block: don't wait for service to complete (we want to exit immediately)
     # --setenv: ensure HOME is set (required by preflight checks and installer)
     # Service output goes to journal (check with: journalctl -u acfs-continue-install)
-    if command -v systemd-run &>/dev/null; then
-        # Remove any stale unit from previous failed attempts
-        systemctl reset-failed acfs-continue-install 2>/dev/null || true
-
-        if systemd-run --collect --no-block \
-            --unit=acfs-continue-install \
-            --description="ACFS Installation Continuation" \
-            --property=Type=oneshot \
-            --property=TimeoutStartSec=7200 \
-            --setenv=HOME=/root \
-            /bin/bash "$script" 2>&1 | tee -a "$ACFS_LOG"; then
-            log "ACFS continuation launched via systemd-run"
-            log "Monitor with: journalctl -u acfs-continue-install -f"
-        else
-            log "systemd-run failed, falling back to nohup"
-            nohup bash "$script" >> "$ACFS_LOG" 2>&1 &
+	    if command -v systemd-run &>/dev/null; then
+	        # Remove any stale unit from previous failed attempts
+	        systemctl reset-failed acfs-continue-install 2>/dev/null || true
+	
+	        if (
+	            set -o pipefail
+	            systemd-run --collect --no-block \
+	            --unit=acfs-continue-install \
+	            --description="ACFS Installation Continuation" \
+	            --property=Type=oneshot \
+	            --property=TimeoutStartSec=7200 \
+	            --setenv=HOME=/root \
+	            /bin/bash "$script" 2>&1 | tee -a "$ACFS_LOG"
+	        ); then
+	            log "ACFS continuation launched via systemd-run"
+	            log "Monitor with: journalctl -u acfs-continue-install -f"
+	        else
+	            log "systemd-run failed, falling back to nohup"
+	            nohup bash "$script" >> "$ACFS_LOG" 2>&1 &
             log "ACFS continuation launched via nohup (PID: $!)"
         fi
     else

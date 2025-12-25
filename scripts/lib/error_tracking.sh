@@ -134,10 +134,13 @@ try_step() {
     if [[ -n "$output_file" ]]; then
         if [[ "$ERROR_VERBOSE" == "true" ]]; then
             # Verbose mode: show output in real-time AND capture it
-            if "$@" 2>&1 | tee "$output_file"; then
+            if (
+                set -o pipefail
+                "$@" 2>&1 | tee "$output_file"
+            ); then
                 exit_code=0
             else
-                exit_code=${PIPESTATUS[0]}
+                exit_code=$?
             fi
         else
             # Normal mode: capture silently, show on error
