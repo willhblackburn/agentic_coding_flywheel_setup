@@ -1303,19 +1303,18 @@ run_as_target() {
     # Environment variables to set for target user commands
     # UV_NO_CONFIG prevents uv from looking for config in /root when running via sudo
     # HOME is set explicitly to ensure consistent home directory
-    local env_vars="UV_NO_CONFIG=1 HOME=$user_home"
+    local -a env_args=("UV_NO_CONFIG=1" "HOME=$user_home")
 
     # Pass ACFS context variables to target user environment
-    if [[ -n "${ACFS_BOOTSTRAP_DIR:-}" ]]; then env_vars+=" ACFS_BOOTSTRAP_DIR=$ACFS_BOOTSTRAP_DIR"; fi
-    if [[ -n "${SCRIPT_DIR:-}" ]]; then env_vars+=" SCRIPT_DIR=$SCRIPT_DIR"; fi
-    if [[ -n "${ACFS_RAW:-}" ]]; then env_vars+=" ACFS_RAW=$ACFS_RAW"; fi
-    if [[ -n "${ACFS_VERSION:-}" ]]; then env_vars+=" ACFS_VERSION=$ACFS_VERSION"; fi
+    if [[ -n "${ACFS_BOOTSTRAP_DIR:-}" ]]; then env_args+=("ACFS_BOOTSTRAP_DIR=$ACFS_BOOTSTRAP_DIR"); fi
+    if [[ -n "${SCRIPT_DIR:-}" ]]; then env_args+=("SCRIPT_DIR=$SCRIPT_DIR"); fi
+    if [[ -n "${ACFS_RAW:-}" ]]; then env_args+=("ACFS_RAW=$ACFS_RAW"); fi
+    if [[ -n "${ACFS_VERSION:-}" ]]; then env_args+=("ACFS_VERSION=$ACFS_VERSION"); fi
 
     # Already the target user
     if [[ "$(whoami)" == "$user" ]]; then
         cd "$user_home" 2>/dev/null || true
-        # shellcheck disable=SC2086  # Intentional word splitting for multiple env vars
-        env $env_vars "$@"
+        env "${env_args[@]}" "$@"
         return $?
     fi
 
@@ -1331,21 +1330,29 @@ run_as_target() {
     # - _ is $0 (script name placeholder)
     # - exec "$@" replaces sh with the target command, preserving stdin
     if command_exists sudo; then
-        # shellcheck disable=SC2086,SC2016  # Intentional word splitting; $HOME/$@ expand inside sh -c
-        sudo -u "$user" env $env_vars sh -c 'cd "$HOME" 2>/dev/null; exec "$@"' _ "$@"
+        # shellcheck disable=SC2016  # $HOME/$@ expand inside sh -c
+        sudo -u "$user" env "${env_args[@]}" sh -c 'cd "$HOME" 2>/dev/null; exec "$@"' _ "$@"
         return $?
     fi
 
     # Fallbacks (root-only typically)
     # Note: Avoid -l flag to prevent sourcing profiles
     if command_exists runuser; then
-        # shellcheck disable=SC2086,SC2016  # Intentional word splitting; $HOME/$@ expand inside sh -c
-        runuser -u "$user" -- env $env_vars sh -c 'cd "$HOME" 2>/dev/null; exec "$@"' _ "$@"
+        # shellcheck disable=SC2016  # $HOME/$@ expand inside sh -c
+        runuser -u "$user" -- env "${env_args[@]}" sh -c 'cd "$HOME" 2>/dev/null; exec "$@"' _ "$@"
         return $?
     fi
 
     # su without - to avoid sourcing login shell profiles
-    su "$user" -c "cd '$user_home' 2>/dev/null; export $env_vars; $(printf '%q ' "$@")"
+    local env_assignments=""
+    local kv=""
+    for kv in "${env_args[@]}"; do
+        env_assignments+=" $(printf '%q' "$kv")"
+    done
+    env_assignments="${env_assignments# }"
+    local user_home_q
+    user_home_q=$(printf '%q' "$user_home")
+    su "$user" -c "cd $user_home_q 2>/dev/null; env $env_assignments $(printf '%q ' "$@")"
 }
 
 # ============================================================
@@ -3036,19 +3043,7 @@ EOF
 # ============================================================
 _smoke_run_as_target() {
     local cmd="$1"
-
-    if [[ "$(whoami)" == "$TARGET_USER" ]]; then
-        bash -lc "$cmd"
-        return $?
-    fi
-
-    if command_exists sudo; then
-        sudo -u "$TARGET_USER" -H bash -lc "$cmd"
-        return $?
-    fi
-
-    # Fallback: use su if sudo isn't available
-    su - "$TARGET_USER" -c "bash -lc $(printf %q "$cmd")"
+    run_as_target bash -c "$cmd"
 }
 
 run_smoke_test() {
