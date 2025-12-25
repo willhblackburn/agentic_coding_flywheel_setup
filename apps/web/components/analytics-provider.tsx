@@ -193,32 +193,35 @@ export function AnalyticsProvider({ children }: AnalyticsProviderProps) {
     strategy: 'afterInteractive' as const,
   };
 
+  // Build the GA config script as a plain string to avoid RSC serialization issues
+  const gaConfigScript = `
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', '${gaId}', {
+  page_path: window.location.pathname,
+  cookie_flags: 'SameSite=None;Secure',
+  send_page_view: true,
+  allow_google_signals: true,
+  allow_ad_personalization_signals: false,
+  custom_map: {
+    'dimension1': 'user_type',
+    'dimension2': 'wizard_step',
+    'dimension3': 'selected_os',
+    'dimension4': 'vps_provider',
+    'dimension5': 'terminal_app'
+  }
+});`;
+
   return (
     <>
       {/* Google Analytics Script */}
       <Script {...gaExternalScriptProps} />
-      <Script id="google-analytics" strategy="afterInteractive">
-        {`
-          window.dataLayer = window.dataLayer || [];
-          function gtag(){dataLayer.push(arguments);}
-          gtag('js', new Date());
-          gtag('config', ${JSON.stringify(gaId)}, {
-            page_path: window.location.pathname,
-            cookie_flags: 'SameSite=None;Secure',
-            send_page_view: true,
-            allow_google_signals: true,
-            allow_ad_personalization_signals: false,
-            // Custom dimensions for user segmentation
-            custom_map: {
-              'dimension1': 'user_type',
-              'dimension2': 'wizard_step',
-              'dimension3': 'selected_os',
-              'dimension4': 'vps_provider',
-              'dimension5': 'terminal_app',
-            }
-          });
-        `}
-      </Script>
+      <Script
+        id="google-analytics"
+        strategy="afterInteractive"
+        dangerouslySetInnerHTML={{ __html: gaConfigScript }}
+      />
       {children}
     </>
   );
