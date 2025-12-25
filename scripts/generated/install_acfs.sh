@@ -198,6 +198,37 @@ install_acfs_onboard() {
     acfs_require_contract "module:${module_id}" || return 1
     log_step "Installing acfs.onboard"
 
+    if [[ "${DRY_RUN:-false}" == "true" ]]; then
+        log_info "dry-run: install: mkdir -p ~/.local/bin (target_user)"
+    else
+        if ! run_as_target_shell <<'INSTALL_ACFS_ONBOARD'
+mkdir -p ~/.local/bin
+INSTALL_ACFS_ONBOARD
+        then
+            log_error "acfs.onboard: install command failed: mkdir -p ~/.local/bin"
+            return 1
+        fi
+    fi
+    if [[ "${DRY_RUN:-false}" == "true" ]]; then
+        log_info "dry-run: install: # Install onboard script (target_user)"
+    else
+        if ! run_as_target_shell <<'INSTALL_ACFS_ONBOARD'
+# Install onboard script
+if [[ -n "${ACFS_BOOTSTRAP_DIR:-}" ]] && [[ -f "${ACFS_BOOTSTRAP_DIR}/packages/onboard/onboard.sh" ]]; then
+  cp "${ACFS_BOOTSTRAP_DIR}/packages/onboard/onboard.sh" ~/.local/bin/onboard
+elif [[ -f "packages/onboard/onboard.sh" ]]; then
+  cp "packages/onboard/onboard.sh" ~/.local/bin/onboard
+else
+  ACFS_RAW="${ACFS_RAW:-https://raw.githubusercontent.com/Dicklesworthstone/agentic_coding_flywheel_setup/main}"
+  curl -fsSL "${ACFS_RAW}/packages/onboard/onboard.sh" -o ~/.local/bin/onboard
+fi
+chmod +x ~/.local/bin/onboard
+INSTALL_ACFS_ONBOARD
+        then
+            log_error "acfs.onboard: install command failed: # Install onboard script"
+            return 1
+        fi
+    fi
 
     # Verify
     if [[ "${DRY_RUN:-false}" == "true" ]]; then
@@ -221,6 +252,37 @@ install_acfs_doctor() {
     acfs_require_contract "module:${module_id}" || return 1
     log_step "Installing acfs.doctor"
 
+    if [[ "${DRY_RUN:-false}" == "true" ]]; then
+        log_info "dry-run: install: mkdir -p ~/.local/bin (target_user)"
+    else
+        if ! run_as_target_shell <<'INSTALL_ACFS_DOCTOR'
+mkdir -p ~/.local/bin
+INSTALL_ACFS_DOCTOR
+        then
+            log_error "acfs.doctor: install command failed: mkdir -p ~/.local/bin"
+            return 1
+        fi
+    fi
+    if [[ "${DRY_RUN:-false}" == "true" ]]; then
+        log_info "dry-run: install: # Install acfs wrapper (target_user)"
+    else
+        if ! run_as_target_shell <<'INSTALL_ACFS_DOCTOR'
+# Install acfs wrapper
+if [[ -n "${ACFS_BOOTSTRAP_DIR:-}" ]] && [[ -f "${ACFS_BOOTSTRAP_DIR}/scripts/acfs-update" ]]; then
+  cp "${ACFS_BOOTSTRAP_DIR}/scripts/acfs-update" ~/.local/bin/acfs
+elif [[ -f "scripts/acfs-update" ]]; then
+  cp "scripts/acfs-update" ~/.local/bin/acfs
+else
+  ACFS_RAW="${ACFS_RAW:-https://raw.githubusercontent.com/Dicklesworthstone/agentic_coding_flywheel_setup/main}"
+  curl -fsSL "${ACFS_RAW}/scripts/acfs-update" -o ~/.local/bin/acfs
+fi
+chmod +x ~/.local/bin/acfs
+INSTALL_ACFS_DOCTOR
+        then
+            log_error "acfs.doctor: install command failed: # Install acfs wrapper"
+            return 1
+        fi
+    fi
 
     # Verify
     if [[ "${DRY_RUN:-false}" == "true" ]]; then

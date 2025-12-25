@@ -937,7 +937,19 @@ modules:
     tags: [orchestration]
     notes:
       - "Install onboard script to ~/.local/bin/onboard"
-    install: []
+    install:
+      - mkdir -p ~/.local/bin
+      - |
+        # Install onboard script
+        if [[ -n "${ACFS_BOOTSTRAP_DIR:-}" ]] && [[ -f "${ACFS_BOOTSTRAP_DIR}/packages/onboard/onboard.sh" ]]; then
+          cp "${ACFS_BOOTSTRAP_DIR}/packages/onboard/onboard.sh" ~/.local/bin/onboard
+        elif [[ -f "packages/onboard/onboard.sh" ]]; then
+          cp "packages/onboard/onboard.sh" ~/.local/bin/onboard
+        else
+          ACFS_RAW="${ACFS_RAW:-https://raw.githubusercontent.com/Dicklesworthstone/agentic_coding_flywheel_setup/main}"
+          curl -fsSL "${ACFS_RAW}/packages/onboard/onboard.sh" -o ~/.local/bin/onboard
+        fi
+        chmod +x ~/.local/bin/onboard
     verify:
       - onboard --help || command -v onboard
 
@@ -952,6 +964,18 @@ modules:
     tags: [orchestration]
     notes:
       - "Install acfs script to ~/.local/bin/acfs"
-    install: []
+    install:
+      - mkdir -p ~/.local/bin
+      - |
+        # Install acfs wrapper
+        if [[ -n "${ACFS_BOOTSTRAP_DIR:-}" ]] && [[ -f "${ACFS_BOOTSTRAP_DIR}/scripts/acfs-update" ]]; then
+          cp "${ACFS_BOOTSTRAP_DIR}/scripts/acfs-update" ~/.local/bin/acfs
+        elif [[ -f "scripts/acfs-update" ]]; then
+          cp "scripts/acfs-update" ~/.local/bin/acfs
+        else
+          ACFS_RAW="${ACFS_RAW:-https://raw.githubusercontent.com/Dicklesworthstone/agentic_coding_flywheel_setup/main}"
+          curl -fsSL "${ACFS_RAW}/scripts/acfs-update" -o ~/.local/bin/acfs
+        fi
+        chmod +x ~/.local/bin/acfs
     verify:
       - acfs doctor --help || command -v acfs
