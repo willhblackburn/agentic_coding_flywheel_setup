@@ -136,8 +136,11 @@ _source_context_lib() {
 
     # Download for curl|bash scenario (if curl available)
     if command -v curl &>/dev/null; then
-        local tmp_context="/tmp/acfs-context-$$.sh"
-        if curl -fsSL "$ACFS_RAW/scripts/lib/context.sh" -o "$tmp_context" 2>/dev/null; then
+        local tmp_context=""
+        if command -v mktemp &>/dev/null; then
+            tmp_context="$(mktemp "${TMPDIR:-/tmp}/acfs-context.XXXXXX" 2>/dev/null)" || tmp_context=""
+        fi
+        if [[ -n "$tmp_context" ]] && curl -fsSL "$ACFS_RAW/scripts/lib/context.sh" -o "$tmp_context" 2>/dev/null; then
             source "$tmp_context"
             rm -f "$tmp_context"
             return 0
@@ -184,18 +187,24 @@ _source_reliability_libs() {
     # If local files weren't loaded, try downloading (curl|bash scenario)
     if [[ "$loaded_state" != "true" || "$loaded_report" != "true" ]]; then
         if command -v curl &>/dev/null; then
-            local tmp_state="/tmp/acfs-state-$$.sh"
-            local tmp_report="/tmp/acfs-report-$$.sh"
+            local tmp_state=""
+            local tmp_report=""
 
             if [[ "$loaded_state" != "true" ]]; then
-                if curl -fsSL "$ACFS_RAW/scripts/lib/state.sh" -o "$tmp_state" 2>/dev/null; then
+                if command -v mktemp &>/dev/null; then
+                    tmp_state="$(mktemp "${TMPDIR:-/tmp}/acfs-state.XXXXXX" 2>/dev/null)" || tmp_state=""
+                fi
+                if [[ -n "$tmp_state" ]] && curl -fsSL "$ACFS_RAW/scripts/lib/state.sh" -o "$tmp_state" 2>/dev/null; then
                     source "$tmp_state" && loaded_state=true
                     rm -f "$tmp_state"
                 fi
             fi
 
             if [[ "$loaded_report" != "true" ]]; then
-                if curl -fsSL "$ACFS_RAW/scripts/lib/report.sh" -o "$tmp_report" 2>/dev/null; then
+                if command -v mktemp &>/dev/null; then
+                    tmp_report="$(mktemp "${TMPDIR:-/tmp}/acfs-report.XXXXXX" 2>/dev/null)" || tmp_report=""
+                fi
+                if [[ -n "$tmp_report" ]] && curl -fsSL "$ACFS_RAW/scripts/lib/report.sh" -o "$tmp_report" 2>/dev/null; then
                     source "$tmp_report" && loaded_report=true
                     rm -f "$tmp_report"
                 fi
@@ -258,8 +267,11 @@ _source_ubuntu_upgrade_lib() {
 
     # Download for curl|bash scenario
     if command -v curl &>/dev/null; then
-        local tmp_upgrade="/tmp/acfs-ubuntu-upgrade-$$.sh"
-        if curl -fsSL "$ACFS_RAW/scripts/lib/ubuntu_upgrade.sh" -o "$tmp_upgrade" 2>/dev/null; then
+        local tmp_upgrade=""
+        if command -v mktemp &>/dev/null; then
+            tmp_upgrade="$(mktemp "${TMPDIR:-/tmp}/acfs-ubuntu-upgrade.XXXXXX" 2>/dev/null)" || tmp_upgrade=""
+        fi
+        if [[ -n "$tmp_upgrade" ]] && curl -fsSL "$ACFS_RAW/scripts/lib/ubuntu_upgrade.sh" -o "$tmp_upgrade" 2>/dev/null; then
             source "$tmp_upgrade"
             rm -f "$tmp_upgrade"
             export ACFS_UBUNTU_UPGRADE_LOADED=1
@@ -1001,6 +1013,7 @@ run_preflight_checks() {
     log_step "0/9" "Running pre-flight validation..."
 
     local preflight_script=""
+    local preflight_tmp=""
 
     # Try to find preflight script in different locations
     if [[ -n "${ACFS_BOOTSTRAP_DIR:-}" ]] && [[ -f "$ACFS_BOOTSTRAP_DIR/scripts/preflight.sh" ]]; then
@@ -1009,14 +1022,15 @@ run_preflight_checks() {
         preflight_script="$SCRIPT_DIR/scripts/preflight.sh"
     elif [[ -f "./scripts/preflight.sh" ]]; then
         preflight_script="./scripts/preflight.sh"
-    elif [[ -f "/tmp/acfs-preflight.sh" ]]; then
-        preflight_script="/tmp/acfs-preflight.sh"
     else
         # Download preflight script for curl | bash scenario
         log_detail "Downloading preflight script..."
-        if acfs_curl "$ACFS_RAW/scripts/preflight.sh" -o /tmp/acfs-preflight.sh 2>/dev/null; then
-            chmod +x /tmp/acfs-preflight.sh
-            preflight_script="/tmp/acfs-preflight.sh"
+        if command -v mktemp &>/dev/null; then
+            preflight_tmp="$(mktemp "${TMPDIR:-/tmp}/acfs-preflight.XXXXXX" 2>/dev/null)" || preflight_tmp=""
+        fi
+        if [[ -n "$preflight_tmp" ]] && acfs_curl "$ACFS_RAW/scripts/preflight.sh" -o "$preflight_tmp" 2>/dev/null; then
+            chmod +x "$preflight_tmp"
+            preflight_script="$preflight_tmp"
         else
             log_warn "Could not download preflight script - skipping checks"
             return 0
@@ -1038,6 +1052,11 @@ run_preflight_checks() {
         log_info "Use --skip-preflight to bypass (not recommended)"
         echo "" >&2
         exit 1
+    fi
+
+    # Cleanup downloaded preflight script on success
+    if [[ -n "$preflight_tmp" ]]; then
+        rm -f "$preflight_tmp"
     fi
 
     log_success "[0/9] Pre-flight validation passed"
@@ -2332,9 +2351,13 @@ install_cli_tools() {
             if [[ -n "$arch" ]]; then
                 local lg_ver="0.44.1"
                 local lg_url="https://github.com/jesseduffield/lazygit/releases/download/v${lg_ver}/lazygit_${lg_ver}_Linux_${arch}.tar.gz"
-                if acfs_curl "$lg_url" -o /tmp/lazygit.tar.gz 2>/dev/null; then
-                    $SUDO tar -xzf /tmp/lazygit.tar.gz -C /usr/local/bin lazygit
-                    rm -f /tmp/lazygit.tar.gz
+                local lg_tmp=""
+                if command -v mktemp &>/dev/null; then
+                    lg_tmp="$(mktemp "${TMPDIR:-/tmp}/acfs-lazygit.XXXXXX" 2>/dev/null)" || lg_tmp=""
+                fi
+                if [[ -n "$lg_tmp" ]] && acfs_curl "$lg_url" -o "$lg_tmp" 2>/dev/null; then
+                    $SUDO tar -xzf "$lg_tmp" -C /usr/local/bin lazygit
+                    rm -f "$lg_tmp"
                 fi
             fi
         fi
@@ -2351,9 +2374,13 @@ install_cli_tools() {
         if [[ -n "$arch" ]]; then
             local ld_ver="0.23.3"
             local ld_url="https://github.com/jesseduffield/lazydocker/releases/download/v${ld_ver}/lazydocker_${ld_ver}_Linux_${arch}.tar.gz"
-            if acfs_curl "$ld_url" -o /tmp/lazydocker.tar.gz 2>/dev/null; then
-                $SUDO tar -xzf /tmp/lazydocker.tar.gz -C /usr/local/bin lazydocker
-                rm -f /tmp/lazydocker.tar.gz
+            local ld_tmp=""
+            if command -v mktemp &>/dev/null; then
+                ld_tmp="$(mktemp "${TMPDIR:-/tmp}/acfs-lazydocker.XXXXXX" 2>/dev/null)" || ld_tmp=""
+            fi
+            if [[ -n "$ld_tmp" ]] && acfs_curl "$ld_url" -o "$ld_tmp" 2>/dev/null; then
+                $SUDO tar -xzf "$ld_tmp" -C /usr/local/bin lazydocker
+                rm -f "$ld_tmp"
             fi
         fi
     fi
