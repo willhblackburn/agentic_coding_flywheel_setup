@@ -125,6 +125,7 @@ print_acfs_help() {
     echo "    --json            Output results as JSON"
     echo "    --deep            Run functional tests (auth, connections)"
     echo "  info [options]      Quick system overview (terminal/json/html)"
+    echo "  cheatsheet          Command reference (aliases, shortcuts)"
     echo "  continue [options]  View installation/upgrade progress"
     echo "  dashboard <command> Generate/view a static HTML dashboard"
     echo "  update [options]    Update ACFS tools to latest versions"
@@ -1570,6 +1571,24 @@ main() {
             fi
 
             echo "Error: continue.sh not found" >&2
+            return 1
+            ;;
+        cheatsheet|cs)
+            shift
+            local cheatsheet_script=""
+            if [[ -f "$HOME/.acfs/scripts/lib/cheatsheet.sh" ]]; then
+                cheatsheet_script="$HOME/.acfs/scripts/lib/cheatsheet.sh"
+            elif [[ -f "$SCRIPT_DIR/cheatsheet.sh" ]]; then
+                cheatsheet_script="$SCRIPT_DIR/cheatsheet.sh"
+            elif [[ -f "$SCRIPT_DIR/../scripts/lib/cheatsheet.sh" ]]; then
+                cheatsheet_script="$SCRIPT_DIR/../scripts/lib/cheatsheet.sh"
+            fi
+
+            if [[ -n "$cheatsheet_script" ]]; then
+                exec bash "$cheatsheet_script" "$@"
+            fi
+
+            echo "Error: cheatsheet.sh not found" >&2
             return 1
             ;;
         session)
