@@ -1507,8 +1507,23 @@ acfs_run_verified_upstream_script_as_target() {
         return 1
     fi
 
-    local content
-    content="$(acfs_fetch_url_content "$url")" || return 1
+    # Preserve trailing newlines when capturing remote script content.
+    # Bash command substitution trims trailing newlines, which would change the
+    # checksum we compute vs the exact bytes we execute. Append an EOF sentinel
+    # so the captured output never ends with a newline, then strip it.
+    local sentinel="__ACFS_EOF_SENTINEL__"
+    local content_with_sentinel
+    content_with_sentinel="$(
+        acfs_fetch_url_content "$url" || exit $?
+        printf '%s' "$sentinel"
+    )" || return 1
+
+    if [[ "$content_with_sentinel" != *"$sentinel" ]]; then
+        log_error "Failed to fetch upstream URL: $url"
+        return 1
+    fi
+
+    local content="${content_with_sentinel%"$sentinel"}"
 
     local actual_sha256
     actual_sha256="$(printf '%s' "$content" | acfs_calculate_sha256)" || return 1
