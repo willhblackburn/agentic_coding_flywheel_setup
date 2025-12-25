@@ -1,6 +1,6 @@
 "use client";
 
-import { ComponentPropsWithoutRef, ReactNode } from "react";
+import type { ReactNode, HTMLAttributes, AnchorHTMLAttributes, TableHTMLAttributes, TdHTMLAttributes, ThHTMLAttributes } from "react";
 import { Check, Copy } from "lucide-react";
 import { useState, useCallback } from "react";
 
@@ -13,64 +13,83 @@ import { useState, useCallback } from "react";
  */
 
 // Props that ReactMarkdown passes which should NOT go to DOM elements
-const REACT_MARKDOWN_INTERNAL_PROPS = [
+const REACT_MARKDOWN_INTERNAL_PROPS = new Set([
   "node",
   "siblingCount",
   "index",
   "ordered",
   "isHeader",
   "inline",
-] as const;
+  "sourcePosition",
+  "depth",
+  "checked",
+]);
 
 /**
  * Strips ReactMarkdown internal props from an object, returning only DOM-safe props
  */
-function sanitizeProps<T extends Record<string, unknown>>(props: T): Omit<T, typeof REACT_MARKDOWN_INTERNAL_PROPS[number]> {
-  const sanitized = { ...props };
-  for (const key of REACT_MARKDOWN_INTERNAL_PROPS) {
-    delete sanitized[key];
+function sanitizeProps<T extends Record<string, unknown>>(props: T): Record<string, unknown> {
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(props)) {
+    if (!REACT_MARKDOWN_INTERNAL_PROPS.has(key)) {
+      sanitized[key] = value;
+    }
   }
   return sanitized;
 }
 
-/**
- * Creates a component factory that automatically strips ReactMarkdown internal props
- * and optionally demotes heading levels (h1 -> h2, h2 -> h3, etc.)
- */
-type HeadingTag = "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
-
-interface HeadingProps {
+// Common prop interface that ReactMarkdown passes
+interface MarkdownProps {
   children?: ReactNode;
   className?: string;
-  id?: string;
+  node?: unknown;
   [key: string]: unknown;
 }
 
-function createHeading(Tag: HeadingTag) {
-  return function Heading({ children, ...props }: HeadingProps) {
-    const safeProps = sanitizeProps(props);
-    return <Tag {...safeProps}>{children}</Tag>;
-  };
+// Heading components - demoted by 1 level since page has its own h1
+function H1({ children, ...props }: MarkdownProps) {
+  const safeProps = sanitizeProps(props) as HTMLAttributes<HTMLHeadingElement>;
+  return <h2 {...safeProps}>{children}</h2>;
 }
 
-// Demoted headings (h1 in markdown renders as h2 in DOM, etc.)
-// This is because the page already has an h1 (lesson title)
-const DemotedH1 = createHeading("h2");
-const DemotedH2 = createHeading("h3");
-const DemotedH3 = createHeading("h4");
-const DemotedH4 = createHeading("h5");
-const DemotedH5 = createHeading("h6");
-const DemotedH6 = createHeading("h6");
+function H2({ children, ...props }: MarkdownProps) {
+  const safeProps = sanitizeProps(props) as HTMLAttributes<HTMLHeadingElement>;
+  return <h3 {...safeProps}>{children}</h3>;
+}
+
+function H3({ children, ...props }: MarkdownProps) {
+  const safeProps = sanitizeProps(props) as HTMLAttributes<HTMLHeadingElement>;
+  return <h4 {...safeProps}>{children}</h4>;
+}
+
+function H4({ children, ...props }: MarkdownProps) {
+  const safeProps = sanitizeProps(props) as HTMLAttributes<HTMLHeadingElement>;
+  return <h5 {...safeProps}>{children}</h5>;
+}
+
+function H5({ children, ...props }: MarkdownProps) {
+  const safeProps = sanitizeProps(props) as HTMLAttributes<HTMLHeadingElement>;
+  return <h6 {...safeProps}>{children}</h6>;
+}
+
+function H6({ children, ...props }: MarkdownProps) {
+  const safeProps = sanitizeProps(props) as HTMLAttributes<HTMLHeadingElement>;
+  return <h6 {...safeProps}>{children}</h6>;
+}
 
 // Paragraph component
-function Paragraph({ children, ...props }: { children?: ReactNode; [key: string]: unknown }) {
-  const safeProps = sanitizeProps(props);
+function Paragraph({ children, ...props }: MarkdownProps) {
+  const safeProps = sanitizeProps(props) as HTMLAttributes<HTMLParagraphElement>;
   return <p {...safeProps}>{children}</p>;
 }
 
 // Anchor component with external link handling
-function Anchor({ children, href, ...props }: { children?: ReactNode; href?: string; [key: string]: unknown }) {
-  const safeProps = sanitizeProps(props);
+interface AnchorProps extends MarkdownProps {
+  href?: string;
+}
+
+function Anchor({ children, href, ...props }: AnchorProps) {
+  const safeProps = sanitizeProps(props) as AnchorHTMLAttributes<HTMLAnchorElement>;
   const isExternal = href?.startsWith("http");
 
   return (
@@ -85,85 +104,73 @@ function Anchor({ children, href, ...props }: { children?: ReactNode; href?: str
 }
 
 // List components
-function UnorderedList({ children, ...props }: { children?: ReactNode; [key: string]: unknown }) {
-  const safeProps = sanitizeProps(props);
+function UnorderedList({ children, ...props }: MarkdownProps) {
+  const safeProps = sanitizeProps(props) as HTMLAttributes<HTMLUListElement>;
   return <ul {...safeProps}>{children}</ul>;
 }
 
-function OrderedList({ children, ...props }: { children?: ReactNode; [key: string]: unknown }) {
-  const safeProps = sanitizeProps(props);
+function OrderedList({ children, ...props }: MarkdownProps) {
+  const safeProps = sanitizeProps(props) as HTMLAttributes<HTMLOListElement>;
   return <ol {...safeProps}>{children}</ol>;
 }
 
-function ListItem({ children, ...props }: { children?: ReactNode; [key: string]: unknown }) {
-  const safeProps = sanitizeProps(props);
+function ListItem({ children, ...props }: MarkdownProps) {
+  const safeProps = sanitizeProps(props) as HTMLAttributes<HTMLLIElement>;
   return <li {...safeProps}>{children}</li>;
 }
 
 // Blockquote component
-function Blockquote({ children, ...props }: { children?: ReactNode; [key: string]: unknown }) {
-  const safeProps = sanitizeProps(props);
+function Blockquote({ children, ...props }: MarkdownProps) {
+  const safeProps = sanitizeProps(props) as HTMLAttributes<HTMLQuoteElement>;
   return <blockquote {...safeProps}>{children}</blockquote>;
 }
 
-// Premium code block with copy button
-function CodeBlock({ children, className, ...props }: { children?: ReactNode; className?: string; [key: string]: unknown }) {
-  const safeProps = sanitizeProps(props);
+// Inline code component
+function InlineCode({ children, ...props }: MarkdownProps) {
+  const safeProps = sanitizeProps(props) as HTMLAttributes<HTMLElement>;
+  return <code {...safeProps}>{children}</code>;
+}
+
+// Pre component - wrapper for code blocks with copy button
+function Pre({ children, ...props }: MarkdownProps) {
+  const safeProps = sanitizeProps(props) as HTMLAttributes<HTMLPreElement>;
   const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback(async () => {
-    const code = typeof children === "string" ? children : "";
-    if (code) {
-      await navigator.clipboard.writeText(code);
+    // Extract text content from children
+    const extractText = (node: ReactNode): string => {
+      if (typeof node === "string") return node;
+      if (typeof node === "number") return String(node);
+      if (!node) return "";
+      if (Array.isArray(node)) return node.map(extractText).join("");
+      if (typeof node === "object" && "props" in node) {
+        return extractText((node as { props: { children?: ReactNode } }).props.children);
+      }
+      return "";
+    };
+
+    const text = extractText(children);
+    if (text) {
+      await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
   }, [children]);
 
-  // Detect language from className (e.g., "language-bash")
-  const language = className?.replace("language-", "") || "";
-
-  return (
-    <div className="group relative">
-      {/* Language badge & copy button */}
-      <div className="absolute right-3 top-3 flex items-center gap-2 z-10">
-        {language && (
-          <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60 bg-muted/50 px-2 py-0.5 rounded">
-            {language}
-          </span>
-        )}
-        <button
-          onClick={handleCopy}
-          className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-md bg-muted/80 hover:bg-muted text-muted-foreground hover:text-foreground"
-          aria-label="Copy code"
-        >
-          {copied ? (
-            <Check className="h-3.5 w-3.5 text-[oklch(0.72_0.19_145)]" />
-          ) : (
-            <Copy className="h-3.5 w-3.5" />
-          )}
-        </button>
-      </div>
-      <pre className={className} {...safeProps}>
-        <code className={className}>{children}</code>
-      </pre>
-    </div>
-  );
-}
-
-// Inline code component
-function InlineCode({ children, ...props }: { children?: ReactNode; [key: string]: unknown }) {
-  const safeProps = sanitizeProps(props);
-  // Check if this is inside a pre (block code) - if so, just render children
-  // The pre will handle the code styling
-  return <code {...safeProps}>{children}</code>;
-}
-
-// Pre component - wrapper for code blocks
-function Pre({ children, ...props }: { children?: ReactNode; [key: string]: unknown }) {
-  const safeProps = sanitizeProps(props);
   return (
     <div className="group relative my-6">
+      {/* Copy button */}
+      <button
+        onClick={handleCopy}
+        className="absolute right-3 top-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-md bg-muted/80 hover:bg-muted text-muted-foreground hover:text-foreground"
+        aria-label="Copy code"
+      >
+        {copied ? (
+          <Check className="h-3.5 w-3.5 text-[oklch(0.72_0.19_145)]" />
+        ) : (
+          <Copy className="h-3.5 w-3.5" />
+        )}
+      </button>
       <pre
         {...safeProps}
         className="rounded-xl border border-border/50 bg-muted/50 p-4 overflow-x-auto"
@@ -175,26 +182,26 @@ function Pre({ children, ...props }: { children?: ReactNode; [key: string]: unkn
 }
 
 // Strong/bold component
-function Strong({ children, ...props }: { children?: ReactNode; [key: string]: unknown }) {
-  const safeProps = sanitizeProps(props);
+function Strong({ children, ...props }: MarkdownProps) {
+  const safeProps = sanitizeProps(props) as HTMLAttributes<HTMLElement>;
   return <strong {...safeProps}>{children}</strong>;
 }
 
 // Emphasis/italic component
-function Em({ children, ...props }: { children?: ReactNode; [key: string]: unknown }) {
-  const safeProps = sanitizeProps(props);
+function Em({ children, ...props }: MarkdownProps) {
+  const safeProps = sanitizeProps(props) as HTMLAttributes<HTMLElement>;
   return <em {...safeProps}>{children}</em>;
 }
 
 // Horizontal rule
-function Hr(props: { [key: string]: unknown }) {
-  const safeProps = sanitizeProps(props);
+function Hr(props: MarkdownProps) {
+  const safeProps = sanitizeProps(props) as HTMLAttributes<HTMLHRElement>;
   return <hr {...safeProps} className="my-8 border-border/50" />;
 }
 
 // Table components
-function Table({ children, ...props }: { children?: ReactNode; [key: string]: unknown }) {
-  const safeProps = sanitizeProps(props);
+function Table({ children, ...props }: MarkdownProps) {
+  const safeProps = sanitizeProps(props) as TableHTMLAttributes<HTMLTableElement>;
   return (
     <div className="my-6 overflow-x-auto">
       <table {...safeProps} className="w-full border-collapse">
@@ -204,43 +211,47 @@ function Table({ children, ...props }: { children?: ReactNode; [key: string]: un
   );
 }
 
-function TableHead({ children, ...props }: { children?: ReactNode; [key: string]: unknown }) {
-  const safeProps = sanitizeProps(props);
+function TableHead({ children, ...props }: MarkdownProps) {
+  const safeProps = sanitizeProps(props) as HTMLAttributes<HTMLTableSectionElement>;
   return <thead {...safeProps} className="bg-muted/50">{children}</thead>;
 }
 
-function TableBody({ children, ...props }: { children?: ReactNode; [key: string]: unknown }) {
-  const safeProps = sanitizeProps(props);
+function TableBody({ children, ...props }: MarkdownProps) {
+  const safeProps = sanitizeProps(props) as HTMLAttributes<HTMLTableSectionElement>;
   return <tbody {...safeProps}>{children}</tbody>;
 }
 
-function TableRow({ children, ...props }: { children?: ReactNode; [key: string]: unknown }) {
-  const safeProps = sanitizeProps(props);
+function TableRow({ children, ...props }: MarkdownProps) {
+  const safeProps = sanitizeProps(props) as HTMLAttributes<HTMLTableRowElement>;
   return <tr {...safeProps} className="border-b border-border/50">{children}</tr>;
 }
 
-function TableCell({ children, ...props }: { children?: ReactNode; [key: string]: unknown }) {
-  const safeProps = sanitizeProps(props);
+function TableCell({ children, ...props }: MarkdownProps) {
+  const safeProps = sanitizeProps(props) as TdHTMLAttributes<HTMLTableCellElement>;
   return <td {...safeProps} className="px-4 py-3 text-sm">{children}</td>;
 }
 
-function TableHeader({ children, ...props }: { children?: ReactNode; [key: string]: unknown }) {
-  const safeProps = sanitizeProps(props);
+function TableHeader({ children, ...props }: MarkdownProps) {
+  const safeProps = sanitizeProps(props) as ThHTMLAttributes<HTMLTableCellElement>;
   return <th {...safeProps} className="px-4 py-3 text-left text-sm font-semibold">{children}</th>;
 }
 
 /**
  * Complete set of sanitized ReactMarkdown components
  * Use this with ReactMarkdown's `components` prop
+ *
+ * All components properly strip ReactMarkdown's internal props (node, siblingCount, etc.)
+ * to prevent invalid HTML attributes that break Tailwind's prose CSS selectors.
  */
-export const markdownComponents = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const markdownComponents: Record<string, any> = {
   // Headings are demoted by 1 level (h1->h2, etc.) since page has its own h1
-  h1: DemotedH1,
-  h2: DemotedH2,
-  h3: DemotedH3,
-  h4: DemotedH4,
-  h5: DemotedH5,
-  h6: DemotedH6,
+  h1: H1,
+  h2: H2,
+  h3: H3,
+  h4: H4,
+  h5: H5,
+  h6: H6,
 
   // Text elements
   p: Paragraph,

@@ -85,48 +85,78 @@ function LessonSidebar({
   currentLessonId: number;
   completedLessons: number[];
 }) {
+  const progressPercent = Math.round((completedLessons.length / LESSONS.length) * 100);
+
   return (
     <aside className="sticky top-0 hidden h-screen w-72 shrink-0 overflow-y-auto border-r border-border/50 bg-gradient-to-b from-sidebar/90 via-sidebar/70 to-sidebar/90 backdrop-blur-md lg:block">
       <div className="flex h-full flex-col">
         {/* Header */}
-        <div className="flex items-center gap-3 border-b border-border/50 px-6 py-5">
+        <div className="border-b border-border/50 px-6 py-5">
           <Link
             href="/learn"
-            className="flex items-center gap-2 transition-opacity hover:opacity-80"
+            className="flex items-center gap-2 transition-all duration-200 hover:opacity-80"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/20">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/20 transition-transform duration-200 hover:scale-105">
               <GraduationCap className="h-4 w-4 text-primary" />
             </div>
             <span className="font-mono text-sm font-bold tracking-tight">
               Learning Hub
             </span>
           </Link>
+          {/* Progress indicator */}
+          <div className="mt-4 space-y-1.5">
+            <div className="flex justify-between text-[10px] text-muted-foreground">
+              <span>{completedLessons.length} of {LESSONS.length} complete</span>
+              <span className="font-mono text-primary">{progressPercent}%</span>
+            </div>
+            <div className="h-1 rounded-full bg-muted/50 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-primary to-[oklch(0.72_0.19_145)] transition-all duration-500 ease-out"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+          </div>
         </div>
 
         {/* Lesson list */}
-        <nav className="flex-1 px-4 py-4">
+        <nav className="flex-1 px-4 py-4 overflow-y-auto scrollbar-hide">
           <ul className="space-y-1">
-            {LESSONS.map((lesson) => {
+            {LESSONS.map((lesson, index) => {
               const isCompleted = completedLessons.includes(lesson.id);
               const isCurrent = lesson.id === currentLessonId;
+              const isPast = lesson.id < currentLessonId;
 
               return (
-                <li key={lesson.id}>
+                <li key={lesson.id} className="relative">
+                  {/* Connector line */}
+                  {index < LESSONS.length - 1 && (
+                    <div
+                      className={`absolute left-[22px] top-[34px] h-[calc(100%-10px)] w-px transition-colors duration-300 ${
+                        isCompleted || isPast
+                          ? "bg-[oklch(0.72_0.19_145)/30]"
+                          : "bg-border/30"
+                      }`}
+                    />
+                  )}
                   <Link
                     href={`/learn/${lesson.slug}`}
-                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-200 ${
+                    className={`group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-200 ${
                       isCurrent
-                        ? "bg-primary/15 text-primary shadow-[0_0_20px_-5px] shadow-primary/30"
+                        ? "bg-primary/15 text-primary"
                         : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
                     }`}
                   >
+                    {/* Glow effect for current */}
+                    {isCurrent && (
+                      <div className="absolute inset-0 rounded-lg bg-primary/10 blur-md -z-10" />
+                    )}
                     <div
-                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-mono ${
+                      className={`relative flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-mono transition-all duration-300 ${
                         isCompleted
-                          ? "bg-[oklch(0.72_0.19_145)] text-white"
+                          ? "bg-[oklch(0.72_0.19_145)] text-white shadow-[0_0_12px_-2px] shadow-[oklch(0.72_0.19_145)/40]"
                           : isCurrent
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground"
+                            ? "bg-primary text-primary-foreground shadow-[0_0_12px_-2px] shadow-primary/40"
+                            : "bg-muted text-muted-foreground group-hover:bg-muted/80"
                       }`}
                     >
                       {isCompleted ? (
@@ -135,7 +165,11 @@ function LessonSidebar({
                         lesson.id + 1
                       )}
                     </div>
-                    <span className="line-clamp-1">{lesson.title}</span>
+                    <span className={`line-clamp-1 transition-colors duration-200 ${
+                      isCurrent ? "font-medium" : ""
+                    }`}>
+                      {lesson.title}
+                    </span>
                   </Link>
                 </li>
               );
@@ -149,7 +183,7 @@ function LessonSidebar({
             asChild
             variant="ghost"
             size="sm"
-            className="w-full justify-start text-muted-foreground hover:text-foreground"
+            className="w-full justify-start text-muted-foreground hover:text-foreground transition-colors duration-200"
           >
             <Link href="/">
               <Home className="mr-2 h-4 w-4" />
@@ -482,13 +516,29 @@ export function LessonContent({ lesson, content }: Props) {
       </div>
 
       {/* Mobile navigation - prev | complete | next */}
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/50 bg-background/95 p-4 backdrop-blur-md lg:hidden">
-        <div className="flex items-center gap-2">
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/50 bg-background/95 backdrop-blur-md lg:hidden pb-safe">
+        {/* Progress dots */}
+        <div className="flex justify-center gap-1.5 py-2 border-b border-border/30">
+          {LESSONS.map((l) => (
+            <div
+              key={l.id}
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                l.id === lesson.id
+                  ? "w-6 bg-primary"
+                  : completedLessons.includes(l.id)
+                    ? "w-1.5 bg-[oklch(0.72_0.19_145)]"
+                    : "w-1.5 bg-muted"
+              }`}
+            />
+          ))}
+        </div>
+
+        <div className="flex items-center gap-2 p-4">
           {/* Previous button */}
           <Button
             variant="outline"
             size="icon"
-            className="h-12 w-12 shrink-0"
+            className="h-12 w-12 shrink-0 touch-target transition-transform active:scale-95"
             disabled={!prevLesson}
             asChild={!!prevLesson}
           >
@@ -503,10 +553,10 @@ export function LessonContent({ lesson, content }: Props) {
 
           {/* Mark Complete button - prominent in center */}
           <Button
-            className={`h-12 flex-1 font-medium ${
+            className={`h-12 flex-1 font-medium transition-all duration-200 active:scale-[0.98] ${
               isCompleted
-                ? "bg-[oklch(0.72_0.19_145)] hover:bg-[oklch(0.65_0.19_145)]"
-                : "bg-primary hover:bg-primary/90"
+                ? "bg-[oklch(0.72_0.19_145)] hover:bg-[oklch(0.65_0.19_145)] shadow-[0_0_20px_-5px] shadow-[oklch(0.72_0.19_145)/40]"
+                : "bg-primary hover:bg-primary/90 shadow-[0_0_20px_-5px] shadow-primary/40"
             }`}
             onClick={handleMarkComplete}
             disabled={isCompleted && !nextLesson}
@@ -535,7 +585,7 @@ export function LessonContent({ lesson, content }: Props) {
           <Button
             variant="outline"
             size="icon"
-            className="h-12 w-12 shrink-0"
+            className="h-12 w-12 shrink-0 touch-target transition-transform active:scale-95"
             disabled={!nextLesson}
             asChild={!!nextLesson}
           >
