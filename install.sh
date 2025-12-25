@@ -2879,11 +2879,13 @@ install_stack_phase() {
         log_detail "Installing NTM"
         # The upstream installer can exit non-zero in non-interactive CI while still
         # successfully installing. Run it best-effort, then verify the binary.
-        try_step_eval "Running NTM installer" "acfs_run_verified_upstream_script_as_target 'ntm' 'bash' || true"
+        local ntm_exit=0
+        acfs_run_verified_upstream_script_as_target "ntm" "bash" --no-shell || ntm_exit=$?
+
         if _smoke_run_as_target "command -v ntm >/dev/null && ntm --help >/dev/null 2>&1"; then
             log_success "NTM installed"
         else
-            log_warn "NTM installation failed (ntm not working)"
+            log_warn "NTM installation failed (installer exit ${ntm_exit}; ntm not working)"
         fi
     fi
 
