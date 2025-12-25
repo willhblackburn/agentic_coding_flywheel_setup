@@ -223,36 +223,44 @@ get_next_incomplete() {
 mark_completed() {
     local lesson=$1
 
-    if command -v jq &>/dev/null; then
-        local tmp
-        tmp=$(mktemp "${TMPDIR:-/tmp}/acfs_onboard.XXXXXX" 2>/dev/null) || tmp="/tmp/acfs_onboard_temp.$$"
-        jq --argjson lesson "$lesson" '
-            .completed = (.completed + [$lesson] | unique | sort) |
-            . as $o |
-            .current = (
-                [range(0;9) as $i | select(($o.completed | index($i)) == null) | $i] | first // 8
-            ) |
-            .last_accessed = (now | todateiso8601)
-        ' "$PROGRESS_FILE" > "$tmp" && mv "$tmp" "$PROGRESS_FILE"
-    else
-        # Fallback: warn user that progress is not saved
-        echo -e "${YELLOW}Warning: 'jq' not found. Progress will NOT be saved.${NC}"
-        echo "Please install jq to enable progress tracking."
-    fi
+	if command -v jq &>/dev/null; then
+	    local tmp
+	    tmp=$(mktemp "${TMPDIR:-/tmp}/acfs_onboard.XXXXXX" 2>/dev/null) || return 0
+	    if jq --argjson lesson "$lesson" '
+	            .completed = (.completed + [$lesson] | unique | sort) |
+	            . as $o |
+	            .current = (
+	                [range(0;9) as $i | select(($o.completed | index($i)) == null) | $i] | first // 8
+	            ) |
+	            .last_accessed = (now | todateiso8601)
+	        ' "$PROGRESS_FILE" > "$tmp"; then
+	        mv "$tmp" "$PROGRESS_FILE"
+	    else
+	        rm -f "$tmp"
+	    fi
+	else
+	    # Fallback: warn user that progress is not saved
+	    echo -e "${YELLOW}Warning: 'jq' not found. Progress will NOT be saved.${NC}"
+	    echo "Please install jq to enable progress tracking."
+	fi
 }
 
 # Update current lesson without marking complete
 set_current() {
     local lesson=$1
 
-    if command -v jq &>/dev/null; then
-        local tmp
-        tmp=$(mktemp "${TMPDIR:-/tmp}/acfs_onboard.XXXXXX" 2>/dev/null) || tmp="/tmp/acfs_onboard_temp.$$"
-        jq --argjson lesson "$lesson" '
-            .current = $lesson |
-            .last_accessed = (now | todateiso8601)
-        ' "$PROGRESS_FILE" > "$tmp" && mv "$tmp" "$PROGRESS_FILE"
-    fi
+	if command -v jq &>/dev/null; then
+	    local tmp
+	    tmp=$(mktemp "${TMPDIR:-/tmp}/acfs_onboard.XXXXXX" 2>/dev/null) || return 0
+	    if jq --argjson lesson "$lesson" '
+	            .current = $lesson |
+	            .last_accessed = (now | todateiso8601)
+	        ' "$PROGRESS_FILE" > "$tmp"; then
+	        mv "$tmp" "$PROGRESS_FILE"
+	    else
+	        rm -f "$tmp"
+	    fi
+	fi
 }
 
 # Reset progress

@@ -107,13 +107,19 @@ install_tailscale() {
 
     # Add Tailscale signing key
     log_detail "  Adding Tailscale repository..."
-    if ! curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/${codename}.noarmor.gpg" \
-        | $sudo_cmd tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null 2>&1; then
+    if ! (
+        set -o pipefail
+        curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/${codename}.noarmor.gpg" \
+            | $sudo_cmd tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null 2>&1
+    ); then
         log_warn "Failed to add Tailscale signing key"
         log_detail "  Trying fallback with generic key..."
         # Fallback: try without codename-specific key
-        if ! curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/noble.noarmor.gpg" \
-            | $sudo_cmd tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null 2>&1; then
+        if ! (
+            set -o pipefail
+            curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/noble.noarmor.gpg" \
+                | $sudo_cmd tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null 2>&1
+        ); then
             log_error "Failed to add Tailscale repository key"
             return 1
         fi
