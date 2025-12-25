@@ -218,41 +218,52 @@ export function validateManifest(manifest: unknown): ValidationResult {
 function detectDependencyCycles(modules: Manifest['modules']): ValidationError[] {
   const errors: ValidationError[] = [];
   const moduleMap = new Map(modules.map((m) => [m.id, m]));
+  const processed = new Set<string>();
+  const visiting = new Set<string>();
 
-  function hasCycle(moduleId: string, visited: Set<string>, path: string[]): string[] | null {
-    if (visited.has(moduleId)) {
+  function visit(moduleId: string, path: string[]): string[] | null {
+    if (processed.has(moduleId)) {
+      return null;
+    }
+    if (visiting.has(moduleId)) {
       const cycleStart = path.indexOf(moduleId);
       return path.slice(cycleStart);
     }
 
     const module = moduleMap.get(moduleId);
     if (!module || !module.dependencies) {
+      processed.add(moduleId);
       return null;
     }
 
-    visited.add(moduleId);
+    visiting.add(moduleId);
     path.push(moduleId);
 
     for (const dep of module.dependencies) {
-      const cycle = hasCycle(dep, visited, path);
+      const cycle = visit(dep, path);
       if (cycle) {
         return cycle;
       }
     }
 
-    visited.delete(moduleId);
+    visiting.delete(moduleId);
     path.pop();
+    processed.add(moduleId);
     return null;
   }
 
   for (const module of modules) {
-    const cycle = hasCycle(module.id, new Set(), []);
+    if (processed.has(module.id)) continue;
+    
+    const cycle = visit(module.id, []);
     if (cycle) {
       errors.push({
         path: `modules.${module.id}.dependencies`,
         message: `Dependency cycle detected: ${cycle.join(' -> ')} -> ${cycle[0]}`,
       });
-      break; // Only report first cycle found
+      // We can stop after finding one cycle, or continue to find disjoint cycles.
+      // For now, reporting one is sufficient to fail validation.
+      break; 
     }
   }
 
