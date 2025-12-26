@@ -1253,6 +1253,42 @@ bootstrap_repo_archive() {
     return 0
 }
 
+_acfs_install_asset_has_symlink_component_under_prefix() {
+    local prefix="$1"
+    local dest_path="$2"
+
+    case "$dest_path" in
+        "$prefix" | "$prefix"/*) ;;
+        *) return 1 ;; # Not under prefix; no signal
+    esac
+
+    local rel="${dest_path#"$prefix"}"
+    rel="${rel#/}"
+
+    local current="$prefix"
+    if [[ -L "$current" ]]; then
+        return 0
+    fi
+
+    if [[ -z "$rel" ]]; then
+        return 1
+    fi
+
+    local -a parts=()
+    IFS='/' read -r -a parts <<< "$rel"
+    local part=""
+
+    for part in "${parts[@]}"; do
+        [[ -n "$part" ]] || continue
+        current="$current/$part"
+        if [[ -L "$current" ]]; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
 install_asset() {
     local rel_path="$1"
     local dest_path="$2"
@@ -1285,18 +1321,64 @@ install_asset() {
         return 1
     fi
 
+    # If running with elevated privileges, refuse to write through symlink path
+    # components for sensitive destinations (prevents symlink clobber attacks).
+    if [[ $EUID -eq 0 ]]; then
+        if _acfs_install_asset_has_symlink_component_under_prefix "$ACFS_HOME" "$dest_path" || \
+           _acfs_install_asset_has_symlink_component_under_prefix "$TARGET_HOME" "$dest_path" || \
+           _acfs_install_asset_has_symlink_component_under_prefix "/usr/local/bin" "$dest_path"; then
+            log_error "install_asset: Refusing to write through symlink path component: $dest_path"
+            return 1
+        fi
+    fi
+
+    local dest_dir
+    dest_dir="$(dirname "$dest_path")"
+
+    local sudo_cmd="${SUDO:-}"
+    if [[ -z "$sudo_cmd" ]] && [[ $EUID -ne 0 ]] && command -v sudo &>/dev/null; then
+        sudo_cmd="sudo"
+    fi
+
+    local need_sudo=false
+    if [[ -e "$dest_path" ]]; then
+        [[ -w "$dest_path" ]] || need_sudo=true
+    else
+        [[ -w "$dest_dir" ]] || need_sudo=true
+    fi
+
+    if [[ "$need_sudo" == "true" ]] && [[ -z "$sudo_cmd" ]]; then
+        log_error "install_asset: Destination not writable and sudo not available: $dest_path"
+        return 1
+    fi
+
     if [[ -n "${ACFS_BOOTSTRAP_DIR:-}" ]] && [[ -f "$ACFS_BOOTSTRAP_DIR/$rel_path" ]]; then
-        if ! cp "$ACFS_BOOTSTRAP_DIR/$rel_path" "$dest_path"; then
+        if [[ "$need_sudo" == "true" ]]; then
+            if ! $sudo_cmd cp "$ACFS_BOOTSTRAP_DIR/$rel_path" "$dest_path"; then
+                log_error "install_asset: Failed to copy from bootstrap: $rel_path"
+                return 1
+            fi
+        elif ! cp "$ACFS_BOOTSTRAP_DIR/$rel_path" "$dest_path"; then
             log_error "install_asset: Failed to copy from bootstrap: $rel_path"
             return 1
         fi
     elif [[ -n "${SCRIPT_DIR:-}" ]] && [[ -f "$SCRIPT_DIR/$rel_path" ]]; then
-        if ! cp "$SCRIPT_DIR/$rel_path" "$dest_path"; then
+        if [[ "$need_sudo" == "true" ]]; then
+            if ! $sudo_cmd cp "$SCRIPT_DIR/$rel_path" "$dest_path"; then
+                log_error "install_asset: Failed to copy from script dir: $rel_path"
+                return 1
+            fi
+        elif ! cp "$SCRIPT_DIR/$rel_path" "$dest_path"; then
             log_error "install_asset: Failed to copy from script dir: $rel_path"
             return 1
         fi
     else
-        if ! acfs_curl -o "$dest_path" "$ACFS_RAW/$rel_path"; then
+        if [[ "$need_sudo" == "true" ]]; then
+            if ! $sudo_cmd curl "${ACFS_CURL_BASE_ARGS[@]}" -o "$dest_path" "$ACFS_RAW/$rel_path"; then
+                log_error "install_asset: Failed to download: $rel_path"
+                return 1
+            fi
+        elif ! acfs_curl -o "$dest_path" "$ACFS_RAW/$rel_path"; then
             log_error "install_asset: Failed to download: $rel_path"
             return 1
         fi
@@ -1622,6 +1704,12 @@ init_target_paths() {
     # ACFS directories for target user
     ACFS_HOME="$TARGET_HOME/.acfs"
     ACFS_STATE_FILE="$ACFS_HOME/state.json"
+
+    # Basic hardening: refuse to use a symlinked ACFS_HOME when running with
+    # elevated privileges (prevents clobbering arbitrary paths via symlink tricks).
+    if [[ -e "$ACFS_HOME" ]] && [[ -L "$ACFS_HOME" ]]; then
+        log_fatal "Refusing to use ACFS_HOME because it is a symlink: $ACFS_HOME"
+    fi
 
     log_detail "Target user: $TARGET_USER"
     log_detail "Target home: $TARGET_HOME"

@@ -479,7 +479,12 @@ state_phase_complete() {
         # Add phase to completed list, record duration, clear current
         local new_state
         if ! new_state=$(echo "$state" | jq --arg phase "$phase_id" --argjson dur "$duration" '
-            .completed_phases = ((.completed_phases // []) + [$phase] | unique) |
+            # Preserve insertion order for resume UX while preventing duplicates.
+            # NOTE: `unique` sorts arrays, which breaks "last completed phase" reporting.
+            .completed_phases = (
+              (.completed_phases // []) as $phases |
+              if ($phases | index($phase)) == null then $phases + [$phase] else $phases end
+            ) |
             .phase_durations[$phase] = $dur |
             .current_phase = null |
             .current_step = null |
