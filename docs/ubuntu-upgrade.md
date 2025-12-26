@@ -165,7 +165,8 @@ cat /var/log/dist-upgrade/main.log
 do-release-upgrade -f DistUpgradeViewNonInteractive
 
 # Or skip and continue ACFS
-rm /var/lib/acfs/state.json
+ts="$(date +%Y%m%d_%H%M%S)"
+[ -f /var/lib/acfs/state.json ] && sudo mv /var/lib/acfs/state.json /var/lib/acfs/state.json.backup."$ts"
 curl -fsSL .../install.sh | bash -s -- --yes --mode vibe --skip-ubuntu-upgrade
 ```
 

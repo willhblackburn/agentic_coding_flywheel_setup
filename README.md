@@ -763,7 +763,7 @@ alias gmi='gemini --yolo'
 
 **Installation & Updates:**
 Claude Code should be installed and updated using its native mechanisms:
-- **Install:** ACFS uses `bun install -g @anthropic-ai/claude-code` (official package)
+- **Install:** ACFS uses the official native installer (`claude.ai/install.sh`), checksum-verified via `checksums.yaml` (installs to `~/.local/bin/claude`)
 - **Update:** Use `claude update` (built-in) or run `acfs update --agents-only`
 
 This ensures proper authentication handling and avoids issues with alternative package manager builds. For Codex and Gemini, ACFS uses standard bun global package updates.
