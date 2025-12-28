@@ -37,6 +37,7 @@ import {
   CompletionToast,
   FinalCelebrationModal,
 } from "@/components/learn/confetti-celebration";
+import { useLessonAnalytics } from "@/lib/hooks/useLessonAnalytics";
 
 interface Props {
   lesson: Lesson;
@@ -299,6 +300,9 @@ export function LessonContent({ lesson }: Props) {
   const [showFinalCelebration, setShowFinalCelebration] = useState(false);
   const { celebrate } = useConfetti();
 
+  // Analytics tracking for lesson funnel
+  const { markComplete: markAnalyticsComplete } = useLessonAnalytics({ lesson });
+
   const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
 
   useEffect(() => {
@@ -327,7 +331,12 @@ export function LessonContent({ lesson }: Props) {
       return;
     }
 
+    // Track in localStorage
     markComplete(lesson.id);
+
+    // Track in GA4 analytics
+    markAnalyticsComplete({ is_final_lesson: !nextLesson });
+
     const isFinalLesson = !nextLesson;
 
     celebrate(isFinalLesson);
@@ -343,7 +352,7 @@ export function LessonContent({ lesson }: Props) {
         router.push(`/learn/${nextLesson.slug}`);
       }, 1500));
     }
-  }, [lesson.id, markComplete, nextLesson, router, celebrate, isCompleted]);
+  }, [lesson.id, markComplete, markAnalyticsComplete, nextLesson, router, celebrate, isCompleted]);
 
   // Keyboard shortcuts
   useEffect(() => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -29,6 +29,7 @@ import {
 } from "@/lib/lessonProgress";
 import { springs } from "@/lib/design-tokens";
 import { useReducedMotion } from "@/lib/hooks/useReducedMotion";
+import { sendEvent, initLessonFunnel, getLessonFunnelData } from "@/lib/analytics";
 
 type LessonStatus = "completed" | "current" | "locked";
 
@@ -167,6 +168,26 @@ export default function LearnDashboard() {
   const nextLesson = getNextUncompletedLesson(completedLessons);
   const router = useRouter();
   const prefersReducedMotion = useReducedMotion();
+  const hasTrackedPageView = useRef(false);
+
+  // Track learning hub page view
+  useEffect(() => {
+    if (hasTrackedPageView.current) return;
+    hasTrackedPageView.current = true;
+
+    // Initialize lesson funnel if not already started
+    if (!getLessonFunnelData()) {
+      initLessonFunnel(TOTAL_LESSONS);
+    }
+
+    // Track learning hub visit with context
+    sendEvent('learning_hub_visit', {
+      completed_lessons: completedLessons.length,
+      total_lessons: TOTAL_LESSONS,
+      completion_percentage: completionPercentage,
+      next_lesson: nextLesson?.slug || 'all_complete',
+    });
+  }, [completedLessons.length, completionPercentage, nextLesson]);
 
   // Keyboard navigation state
   const [selectedIndex, setSelectedIndex] = useState(-1);

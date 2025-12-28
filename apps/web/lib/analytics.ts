@@ -840,6 +840,303 @@ export const trackLandingEngagement = (
 };
 
 // ============================================================
+// Learning Hub Funnel Tracking
+// ============================================================
+
+const LESSON_FUNNEL_STORAGE_KEY = 'acfs_lesson_funnel_data';
+
+interface LessonFunnelData {
+  sessionId: string;
+  startedAt: string;
+  currentLesson: number;
+  maxLessonReached: number;
+  lessonTimestamps: Record<number, { entered?: string; completed?: string }>;
+  completedLessons: number[];
+  source: string;
+  medium: string;
+  campaign: string;
+}
+
+/**
+ * Get current lesson funnel data from storage
+ */
+export const getLessonFunnelData = (): LessonFunnelData | null => {
+  if (typeof window === 'undefined') return null;
+  return safeGetJSON<LessonFunnelData>(LESSON_FUNNEL_STORAGE_KEY);
+};
+
+/**
+ * Initialize a new lesson funnel session
+ */
+export const initLessonFunnel = (totalLessons: number): LessonFunnelData => {
+  if (typeof window === 'undefined') {
+    return {
+      sessionId: '',
+      startedAt: new Date().toISOString(),
+      currentLesson: 0,
+      maxLessonReached: 0,
+      lessonTimestamps: {},
+      completedLessons: [],
+      source: '',
+      medium: '',
+      campaign: '',
+    };
+  }
+
+  // Parse UTM parameters
+  const params = new URLSearchParams(window.location.search);
+
+  const funnelData: LessonFunnelData = {
+    sessionId: `lesson_funnel_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
+    startedAt: new Date().toISOString(),
+    currentLesson: 0,
+    maxLessonReached: 0,
+    lessonTimestamps: {},
+    completedLessons: [],
+    source: params.get('utm_source') || document.referrer || 'direct',
+    medium: params.get('utm_medium') || 'none',
+    campaign: params.get('utm_campaign') || 'none',
+  };
+
+  safeSetJSON(LESSON_FUNNEL_STORAGE_KEY, funnelData);
+
+  // Track lesson funnel initiation
+  sendEvent('lesson_funnel_initiated', {
+    funnel_id: funnelData.sessionId,
+    source: funnelData.source,
+    medium: funnelData.medium,
+    campaign: funnelData.campaign,
+    referrer: document.referrer,
+    total_lessons: totalLessons,
+  });
+
+  // Track as conversion
+  trackConversion('learning_hub_started');
+
+  setUserProperties({
+    lesson_funnel_source: funnelData.source,
+    lesson_funnel_medium: funnelData.medium,
+  });
+
+  return funnelData;
+};
+
+/**
+ * Track entering a lesson
+ */
+export const trackLessonEnter = (
+  lessonId: number,
+  lessonSlug: string,
+  lessonTitle: string,
+  totalLessons: number
+): void => {
+  if (typeof window === 'undefined') return;
+
+  let funnelData = getLessonFunnelData();
+  if (!funnelData) {
+    funnelData = initLessonFunnel(totalLessons);
+  }
+
+  const now = new Date().toISOString();
+  const previousLesson = funnelData.currentLesson;
+  const isNewMaxLesson = lessonId > funnelData.maxLessonReached;
+
+  // Update funnel data
+  funnelData.currentLesson = lessonId;
+  funnelData.maxLessonReached = Math.max(funnelData.maxLessonReached, lessonId);
+  funnelData.lessonTimestamps[lessonId] = {
+    ...funnelData.lessonTimestamps[lessonId],
+    entered: now,
+  };
+
+  safeSetJSON(LESSON_FUNNEL_STORAGE_KEY, funnelData);
+
+  // Calculate time from previous lesson
+  let timeFromPreviousLesson: number | undefined;
+  if (previousLesson >= 0 && funnelData.lessonTimestamps[previousLesson]?.entered) {
+    const prevTime = new Date(funnelData.lessonTimestamps[previousLesson].entered!).getTime();
+    timeFromPreviousLesson = Math.round((Date.now() - prevTime) / 1000);
+  }
+
+  // Track the lesson entry
+  sendEvent('lesson_view', {
+    funnel_id: funnelData.sessionId,
+    lesson_id: lessonId,
+    lesson_slug: lessonSlug,
+    lesson_title: lessonTitle,
+    previous_lesson: previousLesson,
+    is_new_max_lesson: isNewMaxLesson,
+    max_lesson_reached: funnelData.maxLessonReached,
+    time_from_previous_lesson_seconds: timeFromPreviousLesson,
+    total_lessons: totalLessons,
+    progress_percentage: Math.round(((lessonId + 1) / totalLessons) * 100),
+    is_returning: !isNewMaxLesson && lessonId <= funnelData.maxLessonReached,
+    source: funnelData.source,
+    medium: funnelData.medium,
+    campaign: funnelData.campaign,
+  });
+
+  // Track milestones
+  if (lessonId === 0) {
+    sendEvent('lesson_milestone', {
+      milestone: 'learning_started',
+      funnel_id: funnelData.sessionId,
+    });
+  } else if (lessonId === Math.floor(totalLessons / 2)) {
+    sendEvent('lesson_milestone', {
+      milestone: 'halfway_point',
+      funnel_id: funnelData.sessionId,
+    });
+  } else if (lessonId === totalLessons - 1) {
+    sendEvent('lesson_milestone', {
+      milestone: 'final_lesson',
+      funnel_id: funnelData.sessionId,
+    });
+  }
+};
+
+/**
+ * Track completing a lesson
+ */
+export const trackLessonComplete = (
+  lessonId: number,
+  lessonSlug: string,
+  lessonTitle: string,
+  totalLessons: number,
+  additionalData?: Record<string, unknown>
+): void => {
+  if (typeof window === 'undefined') return;
+
+  const funnelData = getLessonFunnelData();
+  if (!funnelData) return;
+
+  const now = new Date().toISOString();
+
+  // Calculate time spent on lesson
+  let timeOnLesson: number | undefined;
+  if (funnelData.lessonTimestamps[lessonId]?.entered) {
+    const enterTime = new Date(funnelData.lessonTimestamps[lessonId].entered!).getTime();
+    timeOnLesson = Math.round((Date.now() - enterTime) / 1000);
+  }
+
+  // Update funnel data
+  if (!funnelData.completedLessons.includes(lessonId)) {
+    funnelData.completedLessons.push(lessonId);
+    funnelData.completedLessons.sort((a, b) => a - b);
+  }
+  funnelData.lessonTimestamps[lessonId] = {
+    ...funnelData.lessonTimestamps[lessonId],
+    completed: now,
+  };
+
+  safeSetJSON(LESSON_FUNNEL_STORAGE_KEY, funnelData);
+
+  // Track the completion
+  sendEvent('lesson_complete', {
+    funnel_id: funnelData.sessionId,
+    lesson_id: lessonId,
+    lesson_slug: lessonSlug,
+    lesson_title: lessonTitle,
+    time_on_lesson_seconds: timeOnLesson,
+    completed_lessons_count: funnelData.completedLessons.length,
+    total_lessons: totalLessons,
+    completion_percentage: Math.round((funnelData.completedLessons.length / totalLessons) * 100),
+    source: funnelData.source,
+    medium: funnelData.medium,
+    ...additionalData,
+  });
+
+  // Also send server-side for reliability
+  sendServerEvent('lesson_complete', {
+    lesson_id: lessonId,
+    lesson_slug: lessonSlug,
+    completion_percentage: Math.round((funnelData.completedLessons.length / totalLessons) * 100),
+  });
+
+  // Check for full completion
+  if (funnelData.completedLessons.length === totalLessons) {
+    trackLessonFunnelComplete(totalLessons);
+  }
+};
+
+/**
+ * Track full lesson funnel completion
+ */
+export const trackLessonFunnelComplete = (totalLessons: number): void => {
+  if (typeof window === 'undefined') return;
+
+  const funnelData = getLessonFunnelData();
+  if (!funnelData) return;
+
+  const startTime = new Date(funnelData.startedAt).getTime();
+  const totalTimeSeconds = Math.round((Date.now() - startTime) / 1000);
+
+  sendEvent('lesson_funnel_complete', {
+    funnel_id: funnelData.sessionId,
+    total_time_seconds: totalTimeSeconds,
+    total_time_minutes: Math.round(totalTimeSeconds / 60),
+    total_lessons: totalLessons,
+    lessons_completed: funnelData.completedLessons.length,
+    source: funnelData.source,
+    medium: funnelData.medium,
+  });
+
+  // Track as major conversion with value
+  trackConversion('wizard_complete', 100); // Reusing wizard_complete as learning_complete
+
+  // Also send server-side for reliability
+  sendServerEvent('lesson_funnel_complete', {
+    total_time_minutes: Math.round(totalTimeSeconds / 60),
+    total_lessons: totalLessons,
+  });
+};
+
+/**
+ * Track lesson funnel dropoff
+ */
+export const trackLessonDropoff = (reason?: string): void => {
+  if (typeof window === 'undefined') return;
+
+  const funnelData = getLessonFunnelData();
+  if (!funnelData) return;
+
+  const startTime = new Date(funnelData.startedAt).getTime();
+  const totalTimeSeconds = Math.round((Date.now() - startTime) / 1000);
+
+  sendEvent('lesson_funnel_dropoff', {
+    funnel_id: funnelData.sessionId,
+    dropped_at_lesson: funnelData.currentLesson,
+    max_lesson_reached: funnelData.maxLessonReached,
+    completed_lessons: funnelData.completedLessons.length,
+    time_in_funnel_seconds: totalTimeSeconds,
+    dropoff_reason: reason || 'unknown',
+    source: funnelData.source,
+    medium: funnelData.medium,
+  });
+};
+
+/**
+ * Get lesson funnel analytics summary (for debugging)
+ */
+export const getLessonFunnelSummary = (totalLessons: number): Record<string, unknown> | null => {
+  const funnelData = getLessonFunnelData();
+  if (!funnelData) return null;
+
+  const startTime = new Date(funnelData.startedAt).getTime();
+  const totalTimeSeconds = Math.round((Date.now() - startTime) / 1000);
+
+  return {
+    funnelId: funnelData.sessionId,
+    currentLesson: funnelData.currentLesson,
+    maxLessonReached: funnelData.maxLessonReached,
+    completedLessons: funnelData.completedLessons,
+    totalTimeMinutes: Math.round(totalTimeSeconds / 60),
+    source: funnelData.source,
+    completionRate: Math.round((funnelData.completedLessons.length / totalLessons) * 100),
+  };
+};
+
+// ============================================================
 // Debug Mode
 // ============================================================
 
