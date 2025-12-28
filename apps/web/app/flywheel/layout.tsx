@@ -17,7 +17,7 @@ export const metadata: Metadata = {
       {
         url: "/og-flywheel.jpg",
         width: 1200,
-        height: 792,
+        height: 1000,
         alt: "The Agent Flywheel - 8 Tools Working Together",
       },
     ],
