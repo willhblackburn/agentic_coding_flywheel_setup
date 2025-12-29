@@ -722,8 +722,11 @@ convert_to_acfs_schema() {
     local filter
     filter="$(
         cat <<'JQ'
-        def messages:
-          [ .[] | select(.type == "user" or .type == "assistant") ];
+        def is_claude_export:
+          any(.[]?; (.type == "user" or .type == "assistant") and (.sessionId? | type) == "string");
+
+        def is_codex_export:
+          any(.[]?; .type == "event_msg" and ((.payload.type? // "") == "user_message" or (.payload.type? // "") == "agent_message"));
 
         def content_to_text:
           if type == "string" then .
@@ -734,28 +737,70 @@ convert_to_acfs_schema() {
                 if type == "string" then .
                 elif type == "object" then
                   # Only include user-visible text blocks; exclude "thinking" / tool blocks.
-                  if (.type? // "") == "text" and (.text? | type) == "string" then .text
-                  elif (.type? // "") == "" and (.text? | type) == "string" then .text
+                  if ((.type? // "") == "text" or (.type? // "") == "input_text" or (.type? // "") == "output_text" or (.type? // "") == "") and (.text? | type) == "string" then .text
                   else "" end
                 else "" end
               ] | join("")
             )
           else "" end;
 
+        def messages:
+          if is_claude_export then
+            [
+              .[] |
+              select(.type == "user" or .type == "assistant") |
+	              {
+	                role: (.message.role // .type // "unknown"),
+	                content: (.message.content | content_to_text),
+	                timestamp: (.timestamp // ""),
+	                sessionId: (.sessionId? // ""),
+	                model: (.message.model? // "")
+	              }
+	            ]
+          elif is_codex_export then
+            [
+              .[] |
+              select(.type == "event_msg") |
+              select((.payload.type? // "") == "user_message" or (.payload.type? // "") == "agent_message") |
+              {
+                role: (if (.payload.type? // "") == "user_message" then "user" else "assistant" end),
+                content: (.payload.message? // "" | tostring),
+                timestamp: (.timestamp // "")
+              }
+            ]
+          else
+            []
+          end;
+
         {
             schema_version: 1,
             exported_at: (now | todateiso8601),
             session_id: (
-              messages as $msgs |
-              ([$msgs[] | .sessionId? | select(type == "string" and length > 0)] | .[0] // "unknown")
+              if is_claude_export then
+                messages as $msgs |
+                ([$msgs[] | .sessionId? | select(type == "string" and length > 0)] | .[0] // "unknown")
+              elif is_codex_export then
+                ([.[] | select(.type == "session_meta") | .payload.id? | select(type == "string" and length > 0)] | .[0] // "unknown")
+              else
+                "unknown"
+              end
             ),
-            agent: ($agent_hint // "unknown"),
+            agent: (if ($agent_hint | length) > 0 then $agent_hint else "unknown" end),
             model: (
-              [
-                messages[] | select((.message.role? // .type? // "") == "assistant") |
-                (.message.model? // empty) |
-                select(type == "string" and length > 0)
-              ] | .[0] // "unknown"
+              if is_claude_export then
+                (
+	                  [
+	                    messages[] |
+	                    select(.role == "assistant") |
+	                    (.model? // "") |
+	                    select(type == "string" and length > 0)
+	                  ] | .[0] // "unknown"
+	                )
+              elif is_codex_export then
+                ([.[] | select(.type == "turn_context") | .payload.model? | select(type == "string" and length > 0)] | .[0] // "unknown")
+              else
+                "unknown"
+              end
             ),
             summary: "Exported session",
             duration_minutes: 0,
@@ -770,12 +815,12 @@ convert_to_acfs_schema() {
             sanitized_transcript: [
                 messages[] |
                 {
-                    role: (.message.role // .type // "unknown"),
-                    content: (.message.content | content_to_text),
+                    role: (.role // "unknown"),
+                    content: (.content // ""),
                     timestamp: (.timestamp // "")
-                } |
-                select(.content | type == "string") |
-                select((.content | length) > 0)
+                }
+                | select(.content | type == "string")
+                | select((.content | length) > 0)
             ]
         }
 JQ
@@ -810,8 +855,20 @@ ACFS_SESSIONS_DIR="${ACFS_SESSIONS_DIR:-${HOME}/.acfs/sessions}"
 infer_agent_from_cass_export() {
     local export_file="${1:-}"
 
+    local originator=""
+    originator="$(jq -r '([.[] | select(.type == "session_meta") | .payload.originator? | select(type == "string" and length > 0)] | .[0] // "")' "$export_file" 2>/dev/null)" || originator=""
+
+    case "${originator,,}" in
+        *claude*|*anthropic*) echo "claude-code"; return 0 ;;
+        *gemini*) echo "gemini"; return 0 ;;
+        *codex*|*openai*) echo "codex"; return 0 ;;
+    esac
+
     local model=""
     model="$(jq -r '([.[] | select(.type == "assistant") | .message.model? | select(type == "string" and length > 0)] | .[0] // "")' "$export_file" 2>/dev/null)" || model=""
+    if [[ -z "$model" ]]; then
+        model="$(jq -r '([.[] | select(.type == "turn_context") | .payload.model? | select(type == "string" and length > 0)] | .[0] // "")' "$export_file" 2>/dev/null)" || model=""
+    fi
 
     case "${model,,}" in
         *claude*|*anthropic*) echo "claude-code" ;;
@@ -876,20 +933,45 @@ import_session() {
     # Detect format
     local is_cass=false is_acfs=false
     if jq -e 'type == "array"' "$file" >/dev/null 2>&1; then
-        # CASS exports can begin with snapshot/event records before user/assistant messages.
+        # CASS exports can begin with snapshot/event records before conversation messages.
         # Detect by scanning entries rather than assuming .[0] is a message record.
         jq -e 'any(.[]?; (.type == "user" or .type == "assistant") and (.sessionId? | type) == "string")' "$file" >/dev/null 2>&1 && is_cass=true
+        jq -e 'any(.[]?; .type == "event_msg" and ((.payload.type? // "") == "user_message" or (.payload.type? // "") == "agent_message"))' "$file" >/dev/null 2>&1 && is_cass=true
     fi
     jq -e 'type == "object" and .schema_version' "$file" >/dev/null 2>&1 && is_acfs=true
 
     # Extract metadata
     local session_id agent turn_count first_ts last_ts
     if [[ "$is_cass" == "true" ]]; then
-        session_id=$(jq -r '([.[] | select(.type == "user" or .type == "assistant") | .sessionId] | map(select(type == "string" and length > 0)) | .[0]) // "unknown"' "$file")
+        session_id=$(jq -r '
+            if any(.[]?; .type == "user" or .type == "assistant") then
+                ([.[] | select(.type == "user" or .type == "assistant") | .sessionId] | map(select(type == "string" and length > 0)) | .[0]) // "unknown"
+            else
+                ([.[] | select(.type == "session_meta") | .payload.id?] | map(select(type == "string" and length > 0)) | .[0]) // "unknown"
+            end
+        ' "$file")
         agent="$(infer_agent_from_cass_export "$file")"
-        turn_count=$(jq '[.[] | select(.type == "user" or .type == "assistant")] | length' "$file")
-        first_ts=$(jq -r '([.[] | select(.type == "user" or .type == "assistant") | .timestamp] | map(select(type == "string")) | .[0]) // ""' "$file")
-        last_ts=$(jq -r '([.[] | select(.type == "user" or .type == "assistant") | .timestamp] | map(select(type == "string")) | .[-1]) // ""' "$file")
+        turn_count=$(jq '
+            if any(.[]?; .type == "user" or .type == "assistant") then
+                ([.[] | select(.type == "user" or .type == "assistant")] | length)
+            else
+                ([.[] | select(.type == "event_msg" and ((.payload.type? // "") == "user_message" or (.payload.type? // "") == "agent_message"))] | length)
+            end
+        ' "$file")
+        first_ts=$(jq -r '
+            if any(.[]?; .type == "user" or .type == "assistant") then
+                ([.[] | select(.type == "user" or .type == "assistant") | .timestamp] | map(select(type == "string")) | .[0]) // ""
+            else
+                ([.[] | select(.type == "event_msg" and ((.payload.type? // "") == "user_message" or (.payload.type? // "") == "agent_message")) | .timestamp] | map(select(type == "string")) | .[0]) // ""
+            end
+        ' "$file")
+        last_ts=$(jq -r '
+            if any(.[]?; .type == "user" or .type == "assistant") then
+                ([.[] | select(.type == "user" or .type == "assistant") | .timestamp] | map(select(type == "string")) | .[-1]) // ""
+            else
+                ([.[] | select(.type == "event_msg" and ((.payload.type? // "") == "user_message" or (.payload.type? // "") == "agent_message")) | .timestamp] | map(select(type == "string")) | .[-1]) // ""
+            end
+        ' "$file")
     elif [[ "$is_acfs" == "true" ]]; then
         session_id=$(jq -r '.session_id // "unknown"' "$file")
         agent=$(jq -r '.agent // "unknown"' "$file")
