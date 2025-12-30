@@ -142,6 +142,46 @@ function shellQuote(str: string): string {
 }
 
 /**
+ * Quote a string for shell usage while allowing *trusted* parameter expansion.
+ *
+ * This is intentionally narrow: it is ONLY used for internal manifest templates like
+ * "${TARGET_HOME:-/home/ubuntu}/..." where we want runtime expansion on the target host.
+ *
+ * SECURITY:
+ * - Refuses command substitution/backticks so we never generate strings that can execute
+ *   arbitrary commands during installer runtime.
+ */
+function shellQuoteAllowParamExpansion(str: string): string {
+  if (str.includes('$(') || str.includes('`')) {
+    throw new Error(
+      `SECURITY: Refusing to generate expandable shell arg containing command substitution: ${JSON.stringify(str)}`
+    );
+  }
+
+  const escaped = str.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return `"${escaped}"`;
+}
+
+/**
+ * Quote verified-installer args.
+ *
+ * Most args are treated as literal words (single-quoted) to prevent injection.
+ * For a small allowlist of runtime templates (TARGET_USER/TARGET_HOME), we use
+ * double quotes to allow parameter expansion.
+ */
+function shellQuoteVerifiedInstallerArg(str: string): string {
+  if (
+    str.includes('${TARGET_HOME') ||
+    str.includes('$TARGET_HOME') ||
+    str.includes('${TARGET_USER') ||
+    str.includes('$TARGET_USER')
+  ) {
+    return shellQuoteAllowParamExpansion(str);
+  }
+  return shellQuote(str);
+}
+
+/**
  * Build the pipe command from verified_installer.runner and args
  *
  * SECURITY: Uses shellQuote() to prevent command injection via args.
@@ -167,7 +207,7 @@ function buildVerifiedInstallerPipe(module: Module): string {
   // keep script args after a `--` separator.
   if (!['bash', 'sh'].includes(vi.runner)) {
     for (const arg of args) {
-      parts.push(shellQuote(arg));
+      parts.push(shellQuoteVerifiedInstallerArg(arg));
     }
     return parts.join(' ');
   }
@@ -188,13 +228,13 @@ function buildVerifiedInstallerPipe(module: Module): string {
   }
 
   for (const arg of runnerArgs) {
-    parts.push(shellQuote(arg));
+    parts.push(shellQuoteVerifiedInstallerArg(arg));
   }
 
   if (scriptArgs.length > 0) {
     parts.push(shellQuote('--'));
     for (const arg of scriptArgs) {
-      parts.push(shellQuote(arg));
+      parts.push(shellQuoteVerifiedInstallerArg(arg));
     }
   }
 
@@ -457,7 +497,7 @@ function generateVerifiedInstallerSnippet(module: Module): string[] {
 
   // Build the args string for the installer runner invocation.
   const argsStr = vi.args && vi.args.length > 0
-    ? vi.args.map(a => shellQuote(a)).join(' ')
+    ? vi.args.map(a => shellQuoteVerifiedInstallerArg(a)).join(' ')
     : '';
 
   // If run_in_tmux is true, we run the installer in a detached tmux session
@@ -554,7 +594,7 @@ function generateVerifiedInstallerSnippet(module: Module): string[] {
         parts.push("'--'");
       }
       for (const arg of vi.args) {
-        parts.push(shellQuote(arg));
+        parts.push(shellQuoteVerifiedInstallerArg(arg));
       }
     }
     execCmd = parts.join(' ');
