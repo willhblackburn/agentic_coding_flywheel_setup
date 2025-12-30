@@ -1005,6 +1005,9 @@ run_deep_checks() {
     # Cloud CLI checks
     deep_check_cloud
 
+    # tmux responsiveness checks (GitHub issue #20: NTM timeouts / slow tmux)
+    deep_check_tmux_performance
+
     # Calculate deep check specific counts
     DEEP_PASS_COUNT=$((PASS_COUNT - pre_pass))
     DEEP_WARN_COUNT=$((WARN_COUNT - pre_warn))
@@ -1260,6 +1263,75 @@ deep_check_cloud() {
     check_wrangler_auth
     check_supabase_auth
     check_vercel_auth
+}
+
+# Deep check: tmux responsiveness
+# Related: GitHub issue #20 (NTM: "context deadline exceeded")
+deep_check_tmux_performance() {
+    if ! command -v tmux &>/dev/null; then
+        check "deep.tmux.present" "tmux responsiveness" "warn" "tmux not installed" "sudo apt install tmux"
+        return
+    fi
+
+    local timeout_secs=5
+    local warn_threshold_ms=1000
+    local hint="If NTM shows 'context deadline exceeded', tmux may be slow. Try running NTM outside of tmux (fresh SSH session). Diagnose with: time tmux list-sessions; time tmux list-panes -a; ls -la /tmp/tmux-*."
+    if [[ -n "${TMUX:-}" ]]; then
+        hint="You are currently inside tmux. If NTM is timing out, try running it outside tmux (new SSH session). Diagnose with: time tmux list-sessions; time tmux list-panes -a; ls -la /tmp/tmux-*."
+    fi
+
+    _deep_check_tmux_cmd() {
+        local id="$1"
+        local label="$2"
+        shift 2
+
+        local start_ns end_ns elapsed_ms
+        start_ns=$(date +%s%N 2>/dev/null || echo "")
+
+        local output status
+        output=$(run_with_timeout "$timeout_secs" "$label" "$@")
+        status=$?
+
+        end_ns=$(date +%s%N 2>/dev/null || echo "")
+        if [[ "$start_ns" =~ ^[0-9]+$ ]] && [[ "$end_ns" =~ ^[0-9]+$ ]]; then
+            elapsed_ms=$(((end_ns - start_ns) / 1000000))
+        else
+            elapsed_ms=-1
+        fi
+
+        if ((status == 124)); then
+            check_with_timeout_status "$id" "$label" "timeout" "timed out after ${timeout_secs}s" "$hint"
+            return 0
+        fi
+
+        if ((status != 0)); then
+            if echo "$output" | grep -qiE "no server running|failed to connect to server"; then
+                check "$id" "$label (no server)" "pass" "no tmux server running"
+                return 0
+            fi
+
+            local first_line=""
+            first_line="$(printf '%s\n' "$output" | head -n 1)"
+            [[ -z "$first_line" ]] && first_line="tmux command failed"
+            check "$id" "$label" "warn" "$first_line" "$hint"
+            return 0
+        fi
+
+        local label_with_timing="$label"
+        if ((elapsed_ms >= 0)); then
+            label_with_timing="$label (${elapsed_ms}ms)"
+        fi
+
+        if ((elapsed_ms >= 0)) && ((elapsed_ms >= warn_threshold_ms)); then
+            check "$id" "$label_with_timing" "warn" "slow tmux" "$hint"
+        else
+            check "$id" "$label_with_timing" "pass" "ok"
+        fi
+        return 0
+    }
+
+    _deep_check_tmux_cmd "deep.tmux.list_sessions" "tmux list-sessions responsiveness" bash -lc "tmux list-sessions >/dev/null"
+    _deep_check_tmux_cmd "deep.tmux.list_panes" "tmux list-panes -a responsiveness" bash -lc "tmux list-panes -a -F '#{pane_id}' >/dev/null"
 }
 
 # check_vault_configured - Check if Vault is configured and reachable
