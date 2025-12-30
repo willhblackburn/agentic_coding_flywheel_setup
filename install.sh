@@ -3951,7 +3951,30 @@ main() {
     # Handle --reset-state: move state file aside and exit
     if [[ "$RESET_STATE_ONLY" == "true" ]]; then
         echo "Resetting ACFS state..." >&2
-        local state_file="${ACFS_HOME:-/home/${TARGET_USER}/.acfs}/state.json"
+        local state_file=""
+        if [[ -n "${ACFS_HOME:-}" ]]; then
+            state_file="${ACFS_HOME}/state.json"
+        else
+            local base_home=""
+            if [[ -n "${TARGET_HOME:-}" ]]; then
+                base_home="$TARGET_HOME"
+            elif [[ "${TARGET_USER:-}" == "root" ]]; then
+                base_home="/root"
+            else
+                base_home="/home/${TARGET_USER}"
+            fi
+
+            if [[ -z "$base_home" ]] || [[ "$base_home" == "/" ]]; then
+                echo "ERROR: Invalid TARGET_HOME: '${base_home:-<empty>}'" >&2
+                exit 1
+            fi
+            if [[ "$base_home" != /* ]]; then
+                echo "ERROR: TARGET_HOME must be an absolute path (got: $base_home)" >&2
+                exit 1
+            fi
+
+            state_file="${base_home}/.acfs/state.json"
+        fi
         if [[ -f "$state_file" ]]; then
             if type -t state_backup_and_remove &>/dev/null; then
                 local state_dir
