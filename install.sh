@@ -4053,6 +4053,14 @@ main() {
         run_preflight_checks
     fi
 
+    # Dry-run mode should be truly non-destructive. Print the plan/summary and exit
+    # before any system-modifying steps (apt/user/upgrade) can run.
+    if [[ "$DRY_RUN" == "true" ]]; then
+        print_execution_plan || true
+        print_summary
+        exit 0
+    fi
+
     if [[ "$PRINT_MODE" == "true" ]]; then
         echo "The following tools will be installed from upstream:"
         echo ""
