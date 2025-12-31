@@ -448,6 +448,110 @@ install_stack_cass() {
             return 1
         fi
     fi
+    if [[ "${DRY_RUN:-false}" = "true" ]]; then
+        log_info "dry-run: install: # Install a small compatibility wrapper for older tooling (e.g., NTM v1.2.0) (target_user)"
+    else
+        if ! run_as_target_shell <<'INSTALL_STACK_CASS'
+# Install a small compatibility wrapper for older tooling (e.g., NTM v1.2.0)
+# that expects `cass robot <subcommand>`. Modern CASS uses `cass <subcommand> --robot`.
+# Best-effort: never fail install if we cannot write the wrapper.
+if cass robot --help >/dev/null 2>&1; then
+  exit 0
+fi
+
+cass_path="$(command -v cass 2>/dev/null || true)"
+if [[ -z "$cass_path" ]]; then
+  echo "WARN: cass not found for wrapper setup" >&2
+  exit 0
+fi
+
+cass_dir="$(cd "$(dirname "$cass_path")" 2>/dev/null && pwd -P || echo "")"
+if [[ -z "$cass_dir" ]]; then
+  echo "WARN: could not resolve cass directory for wrapper setup" >&2
+  exit 0
+fi
+
+cass_real="${cass_dir}/cass.real"
+
+# Idempotency: wrapper already installed.
+if [[ -x "$cass_real" ]] && head -n 2 "$cass_path" 2>/dev/null | grep -q "ACFS CASS WRAPPER"; then
+  exit 0
+fi
+
+if [[ ! -f "$cass_path" ]]; then
+  echo "WARN: cass path is not a regular file: $cass_path" >&2
+  exit 0
+fi
+if [[ ! -w "$cass_path" ]]; then
+  echo "WARN: cannot write to cass binary path (skipping wrapper): $cass_path" >&2
+  exit 0
+fi
+
+if [[ ! -e "$cass_real" ]]; then
+  if ! mv "$cass_path" "$cass_real" 2>/dev/null; then
+    echo "WARN: failed to move cass to cass.real (skipping wrapper)" >&2
+    exit 0
+  fi
+  chmod +x "$cass_real" 2>/dev/null || true
+fi
+
+if ! cat > "$cass_path" <<'EOF'
+#!/usr/bin/env bash
+# ACFS CASS WRAPPER (compat): adds `cass robot <subcommand>` support for older NTM.
+set -euo pipefail
+
+real="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd -P)/cass.real"
+if [[ ! -x "$real" ]]; then
+  echo "ERROR: cass.real not found at: $real" >&2
+  exit 127
+fi
+
+if [[ $# -gt 0 && "${1:-}" == "robot" ]]; then
+  shift || true
+
+  if [[ $# -eq 0 || "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    cat <<'EOT'
+Usage: cass robot <subcommand> [args...]
+
+Compat wrapper installed by ACFS.
+Translates:
+  cass robot <subcommand> ...  ->  cass <subcommand> ... --robot
+
+Examples:
+  cass robot search "error handling" --limit 10
+  cass search "error handling" --robot --limit 10
+EOT
+    exit 0
+  fi
+
+  for arg in "$@"; do
+    if [[ "$arg" == "--robot" ]]; then
+      exec "$real" "$@"
+    fi
+  done
+
+  exec "$real" "$@" --robot
+fi
+
+exec "$real" "$@"
+EOF
+then
+  echo "WARN: failed to write cass wrapper (skipping)" >&2
+  exit 0
+fi
+chmod +x "$cass_path" 2>/dev/null || true
+
+if ! cass robot --help >/dev/null 2>&1; then
+  echo "WARN: cass wrapper installed, but cass robot still failing" >&2
+fi
+
+exit 0
+INSTALL_STACK_CASS
+        then
+            log_error "stack.cass: install command failed: # Install a small compatibility wrapper for older tooling (e.g., NTM v1.2.0)"
+            return 1
+        fi
+    fi
 
     # Verify
     if [[ "${DRY_RUN:-false}" = "true" ]]; then
@@ -459,6 +563,16 @@ INSTALL_STACK_CASS
         then
             log_error "stack.cass: verify failed: cass --help || cass --version"
             return 1
+        fi
+    fi
+    if [[ "${DRY_RUN:-false}" = "true" ]]; then
+        log_info "dry-run: verify (optional): cass robot --help (target_user)"
+    else
+        if ! run_as_target_shell <<'INSTALL_STACK_CASS'
+cass robot --help
+INSTALL_STACK_CASS
+        then
+            log_warn "Optional verify failed: stack.cass"
         fi
     fi
 

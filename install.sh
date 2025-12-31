@@ -3422,6 +3422,106 @@ install_stack_phase() {
         try_step "Installing CASS" acfs_run_verified_upstream_script_as_target "cass" "bash" --easy-mode --verify || log_warn "CASS installation may have failed"
     fi
 
+    # NTM↔CASS compatibility:
+    # NTM v1.2.0 calls `cass robot search ...`, but modern CASS uses `cass search ... --robot`.
+    # Install a small, idempotent wrapper so `cass robot <subcommand>` works.
+    if binary_installed "cass"; then
+        log_detail "Ensuring CASS 'robot' compatibility wrapper"
+        # Best-effort: do not fail the full install if we cannot write a wrapper.
+        run_as_target_shell <<'ACFS_CASS_ROBOT_COMPAT' || log_warn "CASS 'robot' wrapper setup failed (ntm send may still fail)"
+if cass robot --help >/dev/null 2>&1; then
+  exit 0
+fi
+
+cass_path="$(command -v cass 2>/dev/null || true)"
+if [[ -z "$cass_path" ]]; then
+  echo "WARN: cass not found for wrapper setup" >&2
+  exit 0
+fi
+
+cass_dir="$(cd "$(dirname "$cass_path")" 2>/dev/null && pwd -P || echo "")"
+if [[ -z "$cass_dir" ]]; then
+  echo "WARN: could not resolve cass directory for wrapper setup" >&2
+  exit 0
+fi
+
+cass_real="${cass_dir}/cass.real"
+
+# Idempotency: if wrapper is already installed, do nothing.
+if [[ -x "$cass_real" ]] && head -n 2 "$cass_path" 2>/dev/null | grep -q "ACFS CASS WRAPPER"; then
+  exit 0
+fi
+
+# Only wrap when we can write to the installed binary location.
+if [[ ! -f "$cass_path" ]]; then
+  echo "WARN: cass path is not a regular file: $cass_path" >&2
+  exit 0
+fi
+if [[ ! -w "$cass_path" ]]; then
+  echo "WARN: cannot write to cass binary path (skipping wrapper): $cass_path" >&2
+  exit 0
+fi
+
+# Move the real binary aside once, then install the wrapper at the original path.
+if [[ ! -e "$cass_real" ]]; then
+  if ! mv "$cass_path" "$cass_real" 2>/dev/null; then
+    echo "WARN: failed to move cass to cass.real (skipping wrapper)" >&2
+    exit 0
+  fi
+  chmod +x "$cass_real" 2>/dev/null || true
+fi
+
+cat > "$cass_path" <<'EOF'
+#!/usr/bin/env bash
+# ACFS CASS WRAPPER (compat): adds `cass robot <subcommand>` support for older NTM.
+set -euo pipefail
+
+real="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd -P)/cass.real"
+if [[ ! -x "$real" ]]; then
+  echo "ERROR: cass.real not found at: $real" >&2
+  exit 127
+fi
+
+if [[ $# -gt 0 && "${1:-}" == "robot" ]]; then
+  shift || true
+
+  if [[ $# -eq 0 || "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    cat <<'EOT'
+Usage: cass robot <subcommand> [args...]
+
+Compat wrapper installed by ACFS.
+Translates:
+  cass robot <subcommand> ...  ->  cass <subcommand> ... --robot
+
+Examples:
+  cass robot search "error handling" --limit 10
+  cass search "error handling" --robot --limit 10
+EOT
+    exit 0
+  fi
+
+  for arg in "$@"; do
+    if [[ "$arg" == "--robot" ]]; then
+      exec "$real" "$@"
+    fi
+  done
+
+  exec "$real" "$@" --robot
+fi
+
+exec "$real" "$@"
+EOF
+chmod +x "$cass_path" 2>/dev/null || true
+
+# Smoke check; do not fail if it still errors (wrapper is best-effort).
+if ! cass robot --help >/dev/null 2>&1; then
+  echo "WARN: cass wrapper installed, but cass robot still failing" >&2
+fi
+
+exit 0
+ACFS_CASS_ROBOT_COMPAT
+    fi
+
     # CASS Memory System
     if binary_installed "cm"; then
         log_detail "CASS Memory System already installed"
