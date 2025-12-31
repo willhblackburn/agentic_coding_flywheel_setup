@@ -2170,8 +2170,11 @@ normalize_user() {
                 return 1
             fi
         fi
-        try_step "Adding $TARGET_USER to sudo group" $SUDO usermod -aG sudo "$TARGET_USER" || return 1
     fi
+    # Ensure the target user has sudo-group membership even on reruns.
+    # If user creation succeeded but the first `usermod` attempt failed,
+    # reruns should still apply the group change (idempotent).
+    try_step "Ensuring $TARGET_USER is in sudo group" $SUDO usermod -aG sudo "$TARGET_USER" || return 1
 
     # Ensure home directory has correct ownership
     # CRITICAL: useradd -m does NOT change ownership of existing directories (common on VPS)
