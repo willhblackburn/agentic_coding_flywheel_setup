@@ -84,7 +84,7 @@ _agent_check_bun() {
 
     if [[ ! -x "$bun_bin" ]]; then
         log_warn "Bun not found at $bun_bin"
-        log_warn "Install bun first by re-running the ACFS installer (language runtimes phase)"
+        log_warn "Install bun first: curl -fsSL https://agent-flywheel.com/install | bash -s -- --yes --only-phase 5"
         return 1
     fi
     return 0

@@ -3892,7 +3892,7 @@ run_smoke_test() {
         ((critical_passed += 1))
     else
         echo "✖ Languages: missing ${missing_lang[*]}" >&2
-        echo "    Fix: re-run installer (phase 5) and check $ACFS_LOG_DIR/install.log" >&2
+        echo "    Fix: curl -fsSL https://agent-flywheel.com/install | bash -s -- --yes --only-phase 5" >&2
         ((critical_failed += 1))
     fi
 
@@ -3906,7 +3906,7 @@ run_smoke_test() {
         ((critical_passed += 1))
     else
         echo "✖ Agents: missing ${missing_agents[*]}" >&2
-        echo "    Fix: re-run installer (phase 6) to install agent CLIs" >&2
+        echo "    Fix: curl -fsSL https://agent-flywheel.com/install | bash -s -- --yes --only-phase 6" >&2
         ((critical_failed += 1))
     fi
 
@@ -3916,7 +3916,7 @@ run_smoke_test() {
         ((critical_passed += 1))
     else
         echo "✖ NTM: not working" >&2
-        echo "    Fix: re-run installer (phase 8) and check $ACFS_LOG_DIR/install.log" >&2
+        echo "    Fix: curl -fsSL https://agent-flywheel.com/install | bash -s -- --yes --only-phase 8" >&2
         ((critical_failed += 1))
     fi
 
@@ -3926,7 +3926,7 @@ run_smoke_test() {
         ((critical_passed += 1))
     else
         echo "✖ Onboard: missing" >&2
-        echo "    Fix: re-run installer (phase 9) or install onboard to $TARGET_HOME/.local/bin/onboard" >&2
+        echo "    Fix: curl -fsSL https://agent-flywheel.com/install | bash -s -- --yes --only-phase 9" >&2
         ((critical_failed += 1))
     fi
 
@@ -3934,7 +3934,7 @@ run_smoke_test() {
     if [[ -x "$TARGET_HOME/mcp_agent_mail/scripts/run_server_with_token.sh" ]]; then
         echo "✅ Agent Mail: installed (run 'am' to start)" >&2
     else
-        echo "⚠️ Agent Mail: not installed (re-run installer phase 8)" >&2
+        echo "⚠️ Agent Mail: not installed (re-run: curl -fsSL https://agent-flywheel.com/install | bash -s -- --yes --only-phase 8)" >&2
         ((warnings += 1))
     fi
 

@@ -666,7 +666,7 @@ check_shell() {
     if [[ -d "$HOME/.oh-my-zsh" ]]; then
         check "shell.ohmyzsh" "Oh My Zsh" "pass"
     else
-        check "shell.ohmyzsh" "Oh My Zsh" "fail" "not installed" "Re-run the ACFS installer (shell setup phase)"
+        check "shell.ohmyzsh" "Oh My Zsh" "fail" "not installed" "Re-run: curl -fsSL https://agent-flywheel.com/install | bash -s -- --yes --only-phase 3"
     fi
 
     local p10k_dir="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k"
@@ -701,7 +701,7 @@ check_shell() {
         check "shell.lsd_or_eza" "lsd/eza" "warn" "neither installed" "sudo apt install lsd"
     fi
 
-    check_command "shell.atuin" "Atuin" "atuin" "Re-run the ACFS installer (language runtimes phase)"
+    check_command "shell.atuin" "Atuin" "atuin" "Re-run: curl -fsSL https://agent-flywheel.com/install | bash -s -- --yes --only-phase 5"
     check_command "shell.fzf" "fzf" "fzf" "sudo apt install fzf"
     check_command "shell.zoxide" "zoxide" "zoxide" \
         "Re-run: curl -fsSL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | bash"
@@ -714,9 +714,9 @@ check_shell() {
 check_core_tools() {
     section "Core tools"
 
-    check_command "tool.bun" "Bun" "bun" "Re-run the ACFS installer (language runtimes phase)"
-    check_command "tool.uv" "uv" "uv" "Re-run the ACFS installer (language runtimes phase)"
-    check_command "tool.cargo" "Cargo (Rust)" "cargo" "Re-run the ACFS installer (language runtimes phase)"
+    check_command "tool.bun" "Bun" "bun" "Re-run: curl -fsSL https://agent-flywheel.com/install | bash -s -- --yes --only-phase 5"
+    check_command "tool.uv" "uv" "uv" "Re-run: curl -fsSL https://agent-flywheel.com/install | bash -s -- --yes --only-phase 5"
+    check_command "tool.cargo" "Cargo (Rust)" "cargo" "Re-run: curl -fsSL https://agent-flywheel.com/install | bash -s -- --yes --only-phase 5"
     check_command "tool.go" "Go" "go" "sudo apt install golang-go"
     check_command "tool.tmux" "tmux" "tmux" "sudo apt install tmux"
     check_command "tool.rg" "ripgrep" "rg" "sudo apt install ripgrep"
