@@ -280,12 +280,16 @@ GEMINI_EOF"
 
     # Settings file exists - merge our settings if jq is available
     if command -v jq &>/dev/null; then
-        # Check if enableInteractiveShell is already set
+        # Check if enableInteractiveShell is already set (use has() to properly detect false values)
         local current_value
-        current_value=$(_agent_run_as_user "jq -r '.tools.shell.enableInteractiveShell // \"unset\"' '$settings_file'" 2>/dev/null || echo "error")
+        current_value=$(_agent_run_as_user "jq -r 'if .tools.shell | has(\"enableInteractiveShell\") then .tools.shell.enableInteractiveShell | tostring else \"unset\" end' '$settings_file'" 2>/dev/null || echo "error")
 
-        if [[ "$current_value" == "unset" || "$current_value" == "error" ]]; then
-            log_detail "Adding tmux-compatible shell settings to Gemini config..."
+        if [[ "$current_value" == "false" ]]; then
+            # Already configured correctly for tmux
+            log_detail "Gemini shell settings already configured (enableInteractiveShell=false)"
+        elif [[ "$current_value" == "unset" || "$current_value" == "error" || "$current_value" == "true" ]]; then
+            # Need to add or fix the setting
+            log_detail "Configuring Gemini shell settings for tmux compatibility..."
             local tmp_file="$settings_dir/.settings.tmp.$$"
             # Run jq and redirect INSIDE the _agent_run_as_user command so file is owned by target user
             if _agent_run_as_user "jq '.tools = (.tools // {}) | .tools.shell = (.tools.shell // {}) | .tools.shell.enableInteractiveShell = false' '$settings_file' > '$tmp_file' && mv '$tmp_file' '$settings_file'" 2>/dev/null; then
