@@ -593,9 +593,17 @@ validate_directory() {
     local dir="$1"
     local error_msg=""
 
-    # Expand path
+    # Expand tilde to home directory (safe, no eval)
+    # Handles: ~, ~/path, ~user (falls back to literal for ~user)
     local expanded_dir
-    expanded_dir=$(eval echo "$dir" 2>/dev/null) || expanded_dir="$dir"
+    if [[ "$dir" == "~" ]]; then
+        expanded_dir="$HOME"
+    elif [[ "$dir" == "~/"* ]]; then
+        expanded_dir="${HOME}${dir:1}"
+    else
+        # No tilde expansion needed (or ~user form which we don't expand for security)
+        expanded_dir="$dir"
+    fi
 
     # Check if path is absolute or can be made absolute
     if [[ "$expanded_dir" != /* ]]; then
