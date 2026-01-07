@@ -39,6 +39,9 @@ init_creation_steps() {
     STEP_ORDER+=("create_readme")
     STEP_STATUS["create_readme"]="pending"
 
+    STEP_ORDER+=("create_gitignore")
+    STEP_STATUS["create_gitignore"]="pending"
+
     # Feature-dependent steps
     if [[ "$(state_get "enable_agents")" == "true" ]]; then
         STEP_ORDER+=("create_agents")
@@ -72,6 +75,7 @@ get_step_name() {
         create_dir) echo "Creating project directory" ;;
         init_git) echo "Initializing Git repository" ;;
         create_readme) echo "Creating README.md" ;;
+        create_gitignore) echo "Creating .gitignore" ;;
         create_agents) echo "Generating AGENTS.md" ;;
         init_bd) echo "Initializing Beads tracking" ;;
         create_claude) echo "Creating Claude Code settings" ;;
@@ -209,6 +213,47 @@ Created with ACFS newproj wizard.
 TODO: Add project documentation here.
 "
             if try_write_file "$project_dir/README.md" "$readme_content"; then
+                update_step "$step" "success"
+                return 0
+            else
+                update_step "$step" "error"
+                return 1
+            fi
+            ;;
+
+        create_gitignore)
+            local gitignore_content="# OS/Editor artifacts
+.DS_Store
+Thumbs.db
+*~
+*.swp
+*.swo
+.idea/
+.vscode/
+*.sublime-*
+
+# Environment/secrets (never commit these)
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build artifacts (add project-specific patterns below)
+dist/
+build/
+*.pyc
+__pycache__/
+node_modules/
+.venv/
+venv/
+"
+            if try_write_file "$project_dir/.gitignore" "$gitignore_content"; then
                 update_step "$step" "success"
                 return 0
             else
