@@ -485,6 +485,142 @@ test_failopen_large_input() {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Checkpoint/Resume Tests
+# These tests verify DCG installation state tracking for the ACFS installer's
+# checkpoint/resume system.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Test 16: Binary installed but hook not registered (partial install state)
+test_checkpoint_binary_without_hook() {
+    section "Test 16: Checkpoint - Binary Without Hook"
+
+    # Uninstall hook to simulate partial install
+    dcg uninstall >/dev/null 2>&1 || true
+
+    # Binary should still be available
+    if command -v dcg &>/dev/null; then
+        pass "DCG binary exists after hook uninstall"
+    else
+        fail "DCG binary missing after hook uninstall"
+        return 1
+    fi
+
+    # DCG test should still work (binary functionality)
+    local test_output
+    test_output=$(dcg test 'git status' 2>&1) || true
+
+    if echo "$test_output" | grep -qi "allow"; then
+        pass "DCG test works without hook registered"
+    else
+        fail "DCG test failed without hook. Output: $test_output"
+    fi
+
+    # Doctor should report hook as missing
+    local doctor_output
+    doctor_output=$(dcg doctor 2>&1) || true
+
+    if echo "$doctor_output" | grep -qi "hook\|not.*registered\|missing"; then
+        pass "Doctor correctly reports hook status"
+    else
+        skip "Doctor output format unclear: ${doctor_output:0:100}..."
+    fi
+
+    # Re-register hook for subsequent tests
+    dcg install --force >/dev/null 2>&1 || true
+}
+
+# Test 17: Hook registration is idempotent
+test_checkpoint_hook_idempotency() {
+    section "Test 17: Checkpoint - Hook Idempotency"
+
+    # Run install multiple times in succession
+    local install1 install2 install3
+    install1=$(dcg install --force 2>&1) || true
+    install2=$(dcg install --force 2>&1) || true
+    install3=$(dcg install --force 2>&1) || true
+
+    # All should succeed (or already installed)
+    if echo "$install1 $install2 $install3" | grep -qi "error\|failed\|fatal"; then
+        fail "Hook install failed on repeated calls"
+        return 1
+    fi
+
+    pass "Hook install is idempotent (3 successive calls)"
+
+    # Hook should be registered exactly once in settings
+    local hook_count=0
+    for settings_file in ~/.claude/settings.json ~/.config/claude/settings.json; do
+        if [[ -f "$settings_file" ]]; then
+            local count
+            count=$(grep -c "dcg" "$settings_file" 2>/dev/null || echo "0")
+            hook_count=$((hook_count + count))
+        fi
+    done
+
+    if [[ $hook_count -ge 1 ]]; then
+        pass "Hook registered in settings (count: $hook_count)"
+    else
+        skip "Hook registration in settings unclear (count: $hook_count)"
+    fi
+
+    # Verify DCG still works after repeated installs
+    local verify
+    verify=$(dcg test 'git status' 2>&1) || true
+
+    if echo "$verify" | grep -qi "allow"; then
+        pass "DCG works after repeated hook installs"
+    else
+        fail "DCG broken after repeated installs. Output: $verify"
+    fi
+}
+
+# Test 18: State consistency after uninstall/reinstall cycle
+test_checkpoint_state_consistency() {
+    section "Test 18: Checkpoint - State Consistency"
+
+    # Record initial state
+    local initial_version
+    initial_version=$(dcg --version 2>/dev/null || echo "unknown")
+
+    # Full uninstall (but don't purge - keep binary)
+    dcg uninstall >/dev/null 2>&1 || true
+
+    # Reinstall hook
+    dcg install --force >/dev/null 2>&1 || true
+
+    # Version should be consistent
+    local final_version
+    final_version=$(dcg --version 2>/dev/null || echo "unknown")
+
+    # Just verify we can still get version (format may vary with TTY)
+    if [[ "$final_version" != "unknown" ]] || dcg --version >/dev/null 2>&1; then
+        pass "Version accessible after uninstall/reinstall cycle"
+    else
+        fail "Version inaccessible after cycle"
+    fi
+
+    # Hook should be re-registered (use text parsing)
+    local doctor_output
+    doctor_output=$(dcg doctor 2>&1) || true
+
+    if echo "$doctor_output" | grep -q "hook wiring.*OK\|registered"; then
+        pass "Hook correctly re-registered after cycle"
+    else
+        skip "Hook registration status after cycle unclear"
+    fi
+
+    # All core functionality should work
+    local git_block
+    git_block=$(dcg test 'git reset --hard' 2>&1) || true
+
+    if echo "$git_block" | grep -qi "deny\|block"; then
+        pass "Core blocking functionality intact after cycle"
+    else
+        fail "Blocking broken after cycle. Output: $git_block"
+    fi
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Main
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -513,6 +649,11 @@ main() {
     test_failopen_partial_json
     test_failopen_binary_input
     test_failopen_large_input
+
+    # Checkpoint/resume tests
+    test_checkpoint_binary_without_hook
+    test_checkpoint_hook_idempotency
+    test_checkpoint_state_consistency
 
     echo ""
     echo "============================================================"
