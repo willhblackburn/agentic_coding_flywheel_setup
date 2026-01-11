@@ -2,12 +2,13 @@
 
 import * as React from "react"
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox"
-import { m, AnimatePresence } from "framer-motion"
+import { m } from "framer-motion"
 
 import { cn } from "@/lib/utils"
 
 /**
- * Animated checkmark SVG with draw effect
+ * Animated checkmark SVG with draw effect.
+ * Animates on mount when the checkbox becomes checked.
  */
 function AnimatedCheck({ className }: { className?: string }) {
   return (
@@ -19,19 +20,18 @@ function AnimatedCheck({ className }: { className?: string }) {
       strokeWidth={2}
       strokeLinecap="round"
       strokeLinejoin="round"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.15 }}
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.15, ease: "easeOut" }}
     >
       <m.path
         d="M2.5 6.5L5 9L9.5 3.5"
         initial={{ pathLength: 0 }}
         animate={{ pathLength: 1 }}
-        exit={{ pathLength: 0 }}
         transition={{
           duration: 0.2,
           ease: "easeOut",
+          delay: 0.05,
         }}
       />
     </m.svg>
@@ -54,11 +54,8 @@ function Checkbox({
       <CheckboxPrimitive.Indicator
         data-slot="checkbox-indicator"
         className="grid place-content-center text-current"
-        forceMount
       >
-        <AnimatePresence mode="wait">
-          {props.checked && <AnimatedCheck key="check" />}
-        </AnimatePresence>
+        <AnimatedCheck />
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
   )

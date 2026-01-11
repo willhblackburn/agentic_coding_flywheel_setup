@@ -60,7 +60,7 @@ interface ButtonProps
   disableMotion?: boolean;
   /** Show loading spinner and disable button */
   loading?: boolean;
-  /** Text to show when loading (defaults to children) */
+  /** Optional text to show alongside spinner when loading (if omitted, only spinner shown) */
   loadingText?: string;
 }
 
