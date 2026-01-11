@@ -56,20 +56,34 @@ check_directory_status() {
     local dir="$1"
     local resolved
 
-    # Try to resolve path
-    if [[ "$dir" == "~"* ]]; then
-        dir="${dir/#\~/$HOME}"
-    fi
-
-    # Make absolute if relative
-    if [[ "$dir" != /* ]]; then
-        resolved="$(pwd)/$dir"
+    # Use normalize_path from newproj_errors.sh for proper path resolution
+    # This handles ~, relative paths, and symlink resolution safely
+    if declare -f normalize_path &>/dev/null; then
+        resolved=$(normalize_path "$dir")
+        # If normalize_path fails or returns empty, fall back to basic expansion
+        if [[ -z "$resolved" ]]; then
+            resolved="$dir"
+            # Basic tilde expansion
+            if [[ "$resolved" == "~"* ]]; then
+                resolved="${resolved/#\~/$HOME}"
+            fi
+            # Make absolute if relative
+            if [[ "$resolved" != /* ]]; then
+                resolved="$(pwd)/$resolved"
+            fi
+        fi
     else
+        # Fallback if normalize_path not available
         resolved="$dir"
+        # Basic tilde expansion
+        if [[ "$resolved" == "~"* ]]; then
+            resolved="${resolved/#\~/$HOME}"
+        fi
+        # Make absolute if relative
+        if [[ "$resolved" != /* ]]; then
+            resolved="$(pwd)/$resolved"
+        fi
     fi
-
-    # Normalize path
-    resolved=$(cd "$(dirname "$resolved")" 2>/dev/null && pwd)/$(basename "$resolved") 2>/dev/null || resolved="$dir"
 
     # Check if exists
     if [[ -e "$resolved" ]]; then
