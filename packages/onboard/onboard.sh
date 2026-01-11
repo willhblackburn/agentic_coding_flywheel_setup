@@ -949,6 +949,8 @@ show_completion_certificate() {
             "$(gum style --foreground "$ACFS_MUTED" "  • AI Coding Agents (Claude, Codex, Gemini)")" \
             "$(gum style --foreground "$ACFS_MUTED" "  • NTM Dashboard & Prompt Palette")" \
             "$(gum style --foreground "$ACFS_MUTED" "  • The Agentic Development Flywheel")" \
+            "$(gum style --foreground "$ACFS_MUTED" "  • Multi-Repo Sync with RU")" \
+            "$(gum style --foreground "$ACFS_MUTED" "  • Destructive Command Guard (DCG)")" \
             "" \
             "$(gum style --foreground "$ACFS_PRIMARY" "Completed: $completed_at")" \
             "" \
@@ -974,6 +976,8 @@ show_completion_certificate() {
         echo -e "    • AI Coding Agents (Claude, Codex, Gemini)"
         echo -e "    • NTM Dashboard & Prompt Palette"
         echo -e "    • The Agentic Development Flywheel"
+        echo -e "    • Multi-Repo Sync with RU"
+        echo -e "    • Destructive Command Guard (DCG)"
         echo ""
         echo -e "${DIM}  Completed: $completed_at${NC}"
         echo ""
@@ -1323,7 +1327,7 @@ ACFS Onboarding Tutorial
 
 Usage:
   onboard           Launch interactive menu
-  onboard N         Jump to lesson N (1-10)
+  onboard N         Jump to lesson N (1-11)
   onboard reset     Reset all progress
   onboard status    Show completion status
   onboard --cheatsheet [query]  Show ACFS command cheatsheet
@@ -1340,6 +1344,7 @@ Lessons:
   8 - The Flywheel Loop
   9 - Keeping Updated
   10 - RU: Multi-Repo Mastery
+  11 - DCG: Destructive Command Guard
 
 Environment:
   ACFS_LESSONS_DIR   Path to lesson files (default: ~/.acfs/onboard/lessons)
@@ -1350,7 +1355,7 @@ EOF
         init_progress
         main_menu
         ;;
-    [1-9]|10)
+    [1-9]|1[01])
         init_progress
         idx=$(( $1 - 1 ))
         show_lesson "$idx"

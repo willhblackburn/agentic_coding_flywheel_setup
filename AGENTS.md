@@ -699,6 +699,20 @@ Parse: `file:line:col` → location | 💡 → how to fix | Exit 0/1 → pass/fa
 
 DCG (Destructive Command Guard) is a Claude Code hook that **blocks dangerous git and filesystem commands** before execution. Sub-millisecond latency, mechanical enforcement.
 
+**Golden Rule:** DCG works automatically—you don't need to call it. When a dangerous command is blocked, use safer alternatives or ask the user to run it manually.
+
+**Commands:**
+```bash
+dcg test "rm -rf /" --explain     # Test if command would be blocked + why
+dcg doctor                        # Check DCG health and hook registration
+dcg doctor --fix                  # Auto-fix common issues
+dcg packs --enabled               # List enabled protection packs
+dcg pack database.postgresql      # Show pack details and patterns
+dcg install                       # Register hook with Claude Code
+dcg uninstall                     # Remove hook (keeps binary)
+dcg uninstall --purge             # Full removal (binary + config)
+```
+
 **Auto-Blocked Commands:**
 ```bash
 git reset --hard               # Destroys uncommitted changes
@@ -731,6 +745,23 @@ git push --force-with-lease    # Safe force push variant
 [packs]
 enabled = ["database.postgresql", "containers.docker"]
 ```
+
+**Troubleshooting:**
+
+| Issue | Solution |
+|-------|----------|
+| DCG blocks legitimate command | Ask user to run manually, or use allow-once code if provided |
+| Hook not registered | Run `dcg install` |
+| DCG not blocking anything | Run `dcg doctor` to verify hook is active |
+| False positive | Check if command matches safe patterns; report to GitHub if bug |
+| Config not being read | Verify `~/.config/dcg/config.toml` format is valid TOML |
+
+**Agent Integration Tips:**
+- DCG is automatic—no need to call `dcg test` before commands
+- When blocked, explain to user why the command is dangerous
+- Suggest safer alternatives (e.g., `--force-with-lease` instead of `--force`)
+- Never try to bypass DCG—ask user to run dangerous commands manually
+- DCG is sub-50ms latency, designed to not slow down your workflow
 
 ---
 
