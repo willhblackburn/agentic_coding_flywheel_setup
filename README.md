@@ -685,6 +685,72 @@ The wizard guides you through:
 - Feature selection (bd, Claude settings, AGENTS.md, UBS ignore)
 - AGENTS.md customization preview
 
+<details>
+<summary><strong>TUI Wizard Screenshots</strong></summary>
+
+**Welcome Screen:**
+```
+    ╔═══════════════════════════════════════════════════════╗
+    ║                                                       ║
+    ║      █████╗  ██████╗ ███████╗ ███████╗                ║
+    ║     ██╔══██╗██╔════╝ ██╔════╝ ██╔════╝                ║
+    ║     ███████║██║      █████╗   ███████╗                ║
+    ║     ██╔══██║██║      ██╔══╝   ╚════██║                ║
+    ║     ██║  ██║╚██████╗ ██║      ███████║                ║
+    ║     ╚═╝  ╚═╝ ╚═════╝ ╚═╝      ╚══════╝                ║
+    ║                                                       ║
+    ║          Agentic Coding Flywheel Setup                ║
+    ║                                                       ║
+    ╚═══════════════════════════════════════════════════════╝
+
+This wizard will help you set up a new project with:
+
+  ✓ Project directory structure
+  ✓ Git repository initialization
+  ✓ AGENTS.md for AI coding assistants
+  ✓ Beads issue tracking (optional)
+  ✓ Claude Code settings (optional)
+```
+
+**Confirmation Screen:**
+```
+──────────────────── Review & Confirm ────────────────────
+                                              Step 7 of 9
+
+Project Summary
+──────────────────────────────────────────────────────────
+  Name:       myapp
+  Location:   /home/user/projects/myapp
+  Tech:       Node.js, TypeScript
+
+Features
+──────────────────────────────────────────────────────────
+  ✓ Beads tracking
+  ✓ Claude Code settings
+  ✓ AGENTS.md
+  ✓ UBS ignore
+
+Files to Create
+──────────────────────────────────────────────────────────
+myapp/
+├── .git/
+├── AGENTS.md
+├── .beads/
+│   └── beads.db
+├── .claude/
+│   └── settings.local.json
+├── .ubsignore
+├── README.md
+└── .gitignore
+
+Options:
+  [Enter/c]   Create project
+  [e]         Edit selections (go back)
+  [q/Esc]     Cancel
+```
+
+</details>
+
 CLI mode (automation):
 ```bash
 acfs newproj myapp
