@@ -21,6 +21,17 @@ CYAN='\033[0;36m'
 DIM='\033[2m'
 NC='\033[0m'
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+STATE_LIB="${REPO_ROOT}/scripts/lib/state.sh"
+
+STATE_LIB_AVAILABLE="false"
+if [[ -f "$STATE_LIB" ]]; then
+    # shellcheck source=/dev/null
+    source "$STATE_LIB"
+    STATE_LIB_AVAILABLE="true"
+fi
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Test Harness
 # ─────────────────────────────────────────────────────────────────────────────
@@ -370,15 +381,96 @@ test_uninstall_reinstall_cycle() {
     fi
 }
 
+# Test 11: Checkpoint/resume markers for DCG install steps
+test_dcg_checkpoint_resume_markers() {
+    section "Test 11: DCG Checkpoint/Resume Markers"
+
+    if [[ "$STATE_LIB_AVAILABLE" != "true" ]]; then
+        skip "state.sh not available - skipping checkpoint/resume checks"
+        return
+    fi
+
+    if ! command -v jq &>/dev/null; then
+        skip "jq not available - skipping checkpoint/resume checks"
+        return
+    fi
+
+    local state_dir
+    state_dir="/tmp/acfs-dcg-state-$(date +%s)-${RANDOM}"
+    if ! mkdir -p "$state_dir"; then
+        fail "Failed to create temp state directory"
+        return
+    fi
+
+    export ACFS_HOME="$state_dir"
+    export ACFS_STATE_FILE="${state_dir}/state.json"
+
+    if ! state_init; then
+        fail "state_init failed for checkpoint/resume test"
+        return
+    fi
+
+    # Scenario 1: DCG install succeeds, hook registration fails
+    state_phase_start "stack" "Installing DCG" || true
+    state_step_update "Installing DCG" || true
+    state_step_update "Registering DCG hook" || true
+    state_phase_fail "stack" "Registering DCG hook" "simulated hook failure" || true
+
+    local failed_step failed_phase
+    failed_step=$(jq -r '.failed_step // empty' "$ACFS_STATE_FILE" 2>/dev/null)
+    failed_phase=$(jq -r '.failed_phase // empty' "$ACFS_STATE_FILE" 2>/dev/null)
+
+    if [[ "$failed_step" == "Registering DCG hook" && "$failed_phase" == "stack" ]]; then
+        pass "Hook failure recorded at step 'Registering DCG hook'"
+    else
+        fail "Unexpected failure checkpoint (step=$failed_step, phase=$failed_phase)"
+    fi
+
+    # Scenario 2: DCG binary install fails (e.g., network interruption)
+    state_init || true
+    state_phase_start "stack" "Installing DCG" || true
+    state_step_update "Installing DCG" || true
+    state_phase_fail "stack" "Installing DCG" "simulated network interruption" || true
+
+    failed_step=$(jq -r '.failed_step // empty' "$ACFS_STATE_FILE" 2>/dev/null)
+    local failed_error
+    failed_error=$(jq -r '.failed_error // empty' "$ACFS_STATE_FILE" 2>/dev/null)
+
+    if [[ "$failed_step" == "Installing DCG" ]]; then
+        pass "Install failure recorded at step 'Installing DCG'"
+    else
+        fail "Install failure not recorded at expected step (step=$failed_step)"
+    fi
+
+    if echo "$failed_error" | grep -qi "network"; then
+        pass "Failure reason captures network interruption"
+    else
+        skip "Failure reason does not include network hint"
+    fi
+
+    # Optional: verify dcg-specific flags if state schema includes them
+    if jq -e '.dcg_installed != null' "$ACFS_STATE_FILE" >/dev/null 2>&1; then
+        pass "State file includes dcg_installed flag"
+    else
+        skip "State schema does not include dcg_installed flag"
+    fi
+
+    if jq -e '.dcg_hook_registered != null' "$ACFS_STATE_FILE" >/dev/null 2>&1; then
+        pass "State file includes dcg_hook_registered flag"
+    else
+        skip "State schema does not include dcg_hook_registered flag"
+    fi
+}
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Fail-Open Behavior Tests
 # DCG is designed to fail-open: on any error, it allows the command rather
 # than blocking workflow. This ensures DCG never becomes a bottleneck.
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Test 11: Invalid JSON input should fail-open (allow)
+# Test 12: Invalid JSON input should fail-open (allow)
 test_failopen_invalid_json() {
-    section "Test 11: Fail-Open on Invalid JSON"
+    section "Test 12: Fail-Open on Invalid JSON"
 
     # Send garbage to DCG's stdin (simulating malformed Claude Code input)
     echo "not valid json at all" | dcg >/dev/null 2>&1 || true
@@ -395,9 +487,9 @@ test_failopen_invalid_json() {
     fi
 }
 
-# Test 12: Empty stdin should fail-open (allow)
+# Test 13: Empty stdin should fail-open (allow)
 test_failopen_empty_input() {
-    section "Test 12: Fail-Open on Empty Input"
+    section "Test 13: Fail-Open on Empty Input"
 
     # Send empty input to DCG - should handle gracefully
     echo "" | dcg >/dev/null 2>&1 || true
@@ -413,9 +505,9 @@ test_failopen_empty_input() {
     fi
 }
 
-# Test 13: Partial JSON should fail-open (allow)
+# Test 14: Partial JSON should fail-open (allow)
 test_failopen_partial_json() {
-    section "Test 13: Fail-Open on Partial JSON"
+    section "Test 14: Fail-Open on Partial JSON"
 
     # Send truncated JSON (simulating interrupted input) - DCG should handle
     echo '{"tool_name": "Bash", "tool_input":' | dcg >/dev/null 2>&1 || true
@@ -431,9 +523,9 @@ test_failopen_partial_json() {
     fi
 }
 
-# Test 14: Binary data should not crash DCG
+# Test 15: Binary data should not crash DCG
 test_failopen_binary_input() {
-    section "Test 14: Fail-Open on Binary Input"
+    section "Test 15: Fail-Open on Binary Input"
 
     # Send binary data (null bytes, etc.) - DCG should handle without crashing
     printf '\x00\x01\x02\xff\xfe' | dcg >/dev/null 2>&1 || true
@@ -449,9 +541,9 @@ test_failopen_binary_input() {
     fi
 }
 
-# Test 15: Very large input should not hang DCG
+# Test 16: Very large input should not hang DCG
 test_failopen_large_input() {
-    section "Test 15: Fail-Open on Large Input"
+    section "Test 16: Fail-Open on Large Input"
 
     # Generate 1MB of random-ish data
     local large_input
@@ -639,6 +731,7 @@ main() {
     test_safe_force_push
     test_temp_directory_allowed
     test_uninstall_reinstall_cycle
+    test_dcg_checkpoint_resume_markers
 
     # Fail-open behavior tests
     test_failopen_invalid_json
