@@ -913,25 +913,30 @@ export default function HomePage() {
           </div>
           <span className="font-mono text-lg font-bold tracking-tight">Agent Flywheel</span>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
+          {/* Mobile: icon-only buttons with proper touch targets */}
           <a
             href="https://github.com/Dicklesworthstone/agentic_coding_flywheel_setup"
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden text-sm text-muted-foreground transition-colors hover:text-foreground sm:block"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:h-auto sm:w-auto sm:rounded-none sm:bg-transparent sm:hover:bg-transparent"
+            aria-label="GitHub"
           >
-            GitHub
+            <GitBranch className="h-4 w-4 sm:hidden" />
+            <span className="hidden text-sm sm:inline">GitHub</span>
           </a>
           <Link
             href="/learn"
-            className="hidden items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground sm:flex"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:h-auto sm:w-auto sm:gap-1 sm:rounded-none sm:bg-transparent sm:hover:bg-transparent"
+            aria-label="Learn"
           >
             <BookOpen className="h-4 w-4" />
-            Learn
+            <span className="hidden text-sm sm:inline">Learn</span>
           </Link>
           <Button asChild size="sm" variant="outline" className="border-primary/30 hover:bg-primary/10">
             <Link href="/wizard/os-selection">
-              Get Started
+              <span className="hidden sm:inline">Get Started</span>
+              <span className="sm:hidden">Start</span>
               <ChevronRight className="ml-1 h-4 w-4" />
             </Link>
           </Button>

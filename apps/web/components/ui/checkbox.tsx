@@ -2,9 +2,41 @@
 
 import * as React from "react"
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox"
-import { CheckIcon } from "lucide-react"
+import { m, AnimatePresence } from "framer-motion"
 
 import { cn } from "@/lib/utils"
+
+/**
+ * Animated checkmark SVG with draw effect
+ */
+function AnimatedCheck({ className }: { className?: string }) {
+  return (
+    <m.svg
+      viewBox="0 0 12 12"
+      className={cn("size-3.5", className)}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
+    >
+      <m.path
+        d="M2.5 6.5L5 9L9.5 3.5"
+        initial={{ pathLength: 0 }}
+        animate={{ pathLength: 1 }}
+        exit={{ pathLength: 0 }}
+        transition={{
+          duration: 0.2,
+          ease: "easeOut",
+        }}
+      />
+    </m.svg>
+  )
+}
 
 function Checkbox({
   className,
@@ -14,16 +46,19 @@ function Checkbox({
     <CheckboxPrimitive.Root
       data-slot="checkbox"
       className={cn(
-        "peer border-input dark:bg-input/30 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground dark:data-[state=checked]:bg-primary data-[state=checked]:border-primary focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive size-4 shrink-0 rounded-[4px] border shadow-xs transition-shadow outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50",
+        "peer border-input dark:bg-input/30 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground dark:data-[state=checked]:bg-primary data-[state=checked]:border-primary focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive size-4 shrink-0 rounded-[4px] border shadow-xs transition-all duration-150 outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
       {...props}
     >
       <CheckboxPrimitive.Indicator
         data-slot="checkbox-indicator"
-        className="grid place-content-center text-current transition-none"
+        className="grid place-content-center text-current"
+        forceMount
       >
-        <CheckIcon className="size-3.5" />
+        <AnimatePresence mode="wait">
+          {props.checked && <AnimatedCheck key="check" />}
+        </AnimatePresence>
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
   )

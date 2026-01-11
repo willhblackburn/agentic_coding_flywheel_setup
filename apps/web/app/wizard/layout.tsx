@@ -150,8 +150,17 @@ export default function WizardLayout({
               </div>
               <span className="font-mono text-sm font-bold">Agent Flywheel</span>
             </Link>
-            <div className="text-xs text-muted-foreground">
-              Step <span className="font-mono text-primary">{currentStep}</span> of {WIZARD_STEPS.length}
+            <div className="flex items-center gap-3">
+              <Link
+                href="/"
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                aria-label="Home"
+              >
+                <Home className="h-4 w-4" />
+              </Link>
+              <div className="text-xs text-muted-foreground">
+                <span className="font-mono text-primary">{currentStep}</span>/{WIZARD_STEPS.length}
+              </div>
             </div>
           </div>
 
