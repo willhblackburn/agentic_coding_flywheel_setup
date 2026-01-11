@@ -249,22 +249,15 @@ remove_dcg_hook_from_settings() {
 
     local jq_program
     jq_program="$(cat <<'JQ'
-def strip_dcg:
-  if (.hooks | type) == "array" then
-    .hooks = [ .hooks[]? | select(.type != "command" or ((.command // "") | test("dcg") | not)) ]
-  else .
-  end;
-
 .hooks = (.hooks // {}) |
-.hooks.PreToolUse = (.hooks.PreToolUse // []) |
 if (.hooks.PreToolUse | type) != "array" then
   .hooks.PreToolUse = []
-else . end |
-.hooks.PreToolUse = (
-  .hooks.PreToolUse
-  | map(strip_dcg)
-  | map(select((.hooks | type) != "array" or (.hooks | length) > 0))
-)
+else
+  .hooks.PreToolUse = [
+    .hooks.PreToolUse[]?
+    | select(.type != "command" or ((.command // "") | test("dcg") | not))
+  ]
+end
 JQ
 )"
 
