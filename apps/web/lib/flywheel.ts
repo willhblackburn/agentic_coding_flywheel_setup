@@ -460,7 +460,7 @@ export const flywheelTools: FlywheelTool[] = [
     description:
       "A complete coordination system for multi-agent workflows. Agents register identities, send/receive messages, search conversations, and declare file reservations to prevent edit conflicts.",
     deepDescription:
-      "Agent Mail is the nervous system of the flywheel. It provides: agent identities (adjective+noun names like 'BlueLake'), threaded markdown messages, full-text search, and advisory file locks. Git-backed storage means complete audit trails. 20+ MCP tools for programmatic access.",
+      "Agent Mail is the nervous system of the flywheel. It provides: agent identities (adjective+noun names like 'BlueLake'), threaded markdown messages, full-text search, and advisory file locks. SQLite-backed storage means complete audit trails. 20+ MCP tools for programmatic access.",
     connectsTo: ["bv", "cm", "slb", "ntm", "ru"],
     connectionDescriptions: {
       bv: "Task IDs link conversations to Beads issues",
@@ -496,11 +496,11 @@ export const flywheelTools: FlywheelTool[] = [
     href: "https://github.com/Dicklesworthstone/ultimate_bug_scanner",
     icon: "Bug",
     color: "from-rose-400 to-red-500",
-    tagline: "Polyglot static analysis",
+    tagline: "AST-based pattern detection",
     description:
-      "Wraps best-in-class static analyzers (ESLint, Ruff, Clippy, golangci-lint) with consistent JSON output. Sub-5-second feedback loops. Perfect as pre-commit hook or agent post-processor.",
+      "Custom AST-grep patterns detecting subtle bugs across 7+ languages. Designed to have false positives for AI agents to evaluate. Sub-5-second feedback loops. Perfect as pre-commit hook or agent post-processor.",
     deepDescription:
-      "UBS v5.0 supports 7 languages with 18 detection categories including null safety, async bugs, security vulnerabilities, and memory leaks. Zero configuration required. Unified JSON/JSONL/SARIF output for automation. Supply chain secured with SHA-256 checksums.",
+      "UBS uses ast-grep for AST-based pattern matching that tolerates false positives for AI agent review. 18 detection categories including null safety, async bugs, security vulnerabilities, and memory leaks. Zero configuration required. Unified JSON/JSONL/SARIF output for automation.",
     connectsTo: ["bv", "slb"],
     connectionDescriptions: {
       bv: "Creates Beads issues for discovered bugs",
