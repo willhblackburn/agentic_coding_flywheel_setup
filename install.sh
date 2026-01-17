@@ -1638,13 +1638,32 @@ acfs_parse_checksums_content() {
 
         [[ -n "$current_tool" ]] || continue
 
-        if [[ "$line" =~ url:[[:space:]]*\"([^\"]+)\" ]]; then
-            ACFS_UPSTREAM_URLS["$current_tool"]="${BASH_REMATCH[1]}"
+        # Robust parsing: handle quoted or unquoted values, strip comments
+        if [[ "$line" =~ ^[[:space:]]*url:[[:space:]]*(.*)$ ]]; then
+            local val="${BASH_REMATCH[1]}"
+            val="${val%%#*}"                    # Strip comments
+            val="${val%"${val##*[![:space:]]}"}" # Trim trailing space
+            val="${val#"${val%%[![:space:]]*}"}" # Trim leading space
+            val="${val%\"}" val="${val#\"}"      # Strip double quotes
+            val="${val%\'}" val="${val#\'}"      # Strip single quotes
+            
+            if [[ -n "$val" ]]; then
+                ACFS_UPSTREAM_URLS["$current_tool"]="$val"
+            fi
             continue
         fi
 
-        if [[ "$line" =~ sha256:[[:space:]]*\"([a-f0-9]{64})\" ]]; then
-            ACFS_UPSTREAM_SHA256["$current_tool"]="${BASH_REMATCH[1]}"
+        if [[ "$line" =~ ^[[:space:]]*sha256:[[:space:]]*(.*)$ ]]; then
+            local val="${BASH_REMATCH[1]}"
+            val="${val%%#*}"
+            val="${val%"${val##*[![:space:]]}"}"
+            val="${val#"${val%%[![:space:]]*}"}"
+            val="${val%\"}" val="${val#\"}"
+            val="${val%\'}" val="${val#\'}"
+
+            if [[ -n "$val" ]]; then
+                ACFS_UPSTREAM_SHA256["$current_tool"]="$val"
+            fi
             continue
         fi
     done <<< "$content"
@@ -2338,13 +2357,27 @@ normalize_user() {
     if ! id "$TARGET_USER" &>/dev/null; then
         log_detail "Creating user: $TARGET_USER"
 
+        # Generate random password (user will use SSH key, but password is needed for sudo in safe mode)
+        # Use openssl/python/urandom for robustness
+        local user_password=""
+        if command -v openssl &>/dev/null; then
+            user_password=$(openssl rand -base64 32)
+        elif command -v python3 &>/dev/null; then
+            user_password=$(python3 -c "import secrets; print(secrets.token_urlsafe(32))")
+        else
+            user_password=$(tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32)
+        fi
+
         # We intentionally do NOT use try_step here because user creation can be
         # a recoverable race (e.g., another process creates the user between the
         # id check and useradd). Using try_step would record state_phase_fail and
         # poison resume state even if we recover.
         local useradd_exit=0
         local useradd_output=""
+        
+        # Create user with home directory and bash shell
         useradd_output="$($SUDO useradd -m -s /bin/bash "$TARGET_USER" 2>&1)" || useradd_exit=$?
+        
         if [[ $useradd_exit -ne 0 ]]; then
             if id "$TARGET_USER" &>/dev/null; then
                 log_warn "useradd exited ${useradd_exit}, but user '$TARGET_USER' exists; continuing"
@@ -2356,6 +2389,19 @@ normalize_user() {
                     [[ -n "$first_line" ]] && log_detail "useradd: $first_line"
                 fi
                 return 1
+            fi
+        else
+            # Set password if user creation succeeded
+            if [[ -n "$user_password" ]]; then
+                echo "$TARGET_USER:$user_password" | $SUDO chpasswd
+                
+                # Print password for the operator (important for safe mode)
+                echo "" >&2
+                log_warn "Generated password for '$TARGET_USER': $user_password"
+                log_warn "Save this password! You may need it for sudo access (safe mode)."
+                echo "" >&2
+            else
+                log_warn "Failed to generate password for $TARGET_USER"
             fi
         fi
     fi
@@ -3793,6 +3839,35 @@ finalize() {
     try_step "Setting scripts permissions" $SUDO chmod 755 "$ACFS_HOME/scripts/services-setup.sh" || return 1
     try_step "Setting lib scripts permissions" $SUDO chmod 755 "$ACFS_HOME/scripts/lib/"*.sh || return 1
     try_step "Setting scripts ownership" acfs_chown_tree "$TARGET_USER:$TARGET_USER" "$ACFS_HOME/scripts" || return 1
+
+    # Install newproj command scripts (used by acfs newproj CLI and TUI wizard)
+    log_detail "Installing newproj scripts"
+    try_step "Installing newproj.sh" install_asset "scripts/lib/newproj.sh" "$ACFS_HOME/scripts/lib/newproj.sh" || return 1
+    try_step "Installing newproj_agents.sh" install_asset "scripts/lib/newproj_agents.sh" "$ACFS_HOME/scripts/lib/newproj_agents.sh" || return 1
+    try_step "Installing newproj_detect.sh" install_asset "scripts/lib/newproj_detect.sh" "$ACFS_HOME/scripts/lib/newproj_detect.sh" || return 1
+    try_step "Installing newproj_errors.sh" install_asset "scripts/lib/newproj_errors.sh" "$ACFS_HOME/scripts/lib/newproj_errors.sh" || return 1
+    try_step "Installing newproj_logging.sh" install_asset "scripts/lib/newproj_logging.sh" "$ACFS_HOME/scripts/lib/newproj_logging.sh" || return 1
+    try_step "Installing newproj_screens.sh" install_asset "scripts/lib/newproj_screens.sh" "$ACFS_HOME/scripts/lib/newproj_screens.sh" || return 1
+    try_step "Installing newproj_tui.sh" install_asset "scripts/lib/newproj_tui.sh" "$ACFS_HOME/scripts/lib/newproj_tui.sh" || return 1
+
+    try_step "Creating newproj_screens directory" $SUDO mkdir -p "$ACFS_HOME/scripts/lib/newproj_screens" || return 1
+    
+    local screens=(
+        "screen_agents_preview.sh"
+        "screen_confirmation.sh"
+        "screen_directory.sh"
+        "screen_features.sh"
+        "screen_progress.sh"
+        "screen_project_name.sh"
+        "screen_success.sh"
+        "screen_tech_stack.sh"
+        "screen_welcome.sh"
+    )
+    for screen in "${screens[@]}"; do
+        try_step "Installing $screen" install_asset "scripts/lib/newproj_screens/$screen" "$ACFS_HOME/scripts/lib/newproj_screens/$screen" || return 1
+    done
+    try_step "Setting newproj permissions" $SUDO chmod 755 "$ACFS_HOME/scripts/lib/"newproj*.sh "$ACFS_HOME/scripts/lib/newproj_screens/"*.sh || return 1
+    try_step "Setting newproj ownership" acfs_chown_tree "$TARGET_USER:$TARGET_USER" "$ACFS_HOME/scripts/lib" || return 1
 
     # Install checksums + version metadata so `acfs update --stack` can verify upstream scripts.
     try_step "Installing checksums.yaml" install_checksums_yaml "$ACFS_HOME/checksums.yaml" || return 1
