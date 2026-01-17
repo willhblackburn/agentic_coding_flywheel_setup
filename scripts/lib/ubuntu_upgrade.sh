@@ -39,7 +39,7 @@ declare -f log_info &>/dev/null || log_info() { log_detail "$1"; }
 # ============================================================
 
 # Get current Ubuntu version as comparable number
-# e.g., 24.04 -> 2404, 25.10 -> 2510
+# e.g., 24.04 -> 2404, 25.10 -> 2510, 24.04.1 -> 2404
 # Returns: version number on stdout, or empty if not Ubuntu
 ubuntu_get_version_number() {
     local version_str
@@ -49,12 +49,15 @@ ubuntu_get_version_number() {
         return 1
     fi
 
-    # Convert "24.04" to "2404"
+    # Handle "24.04", "24.04.1", "25.10"
     local major minor
     major="${version_str%%.*}"
-    minor="${version_str#*.}"
+    # Remove everything after the second dot (if any) to get minor version
+    # "04.1" -> "04"
+    local remainder="${version_str#*.}"
+    minor="${remainder%%.*}"
 
-    # Pad minor to 2 digits
+    # Pad minor to 2 digits (e.g. 4 -> 04, 10 -> 10)
     printf "%d%02d" "$major" "$minor"
 }
 
