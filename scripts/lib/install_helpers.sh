@@ -602,6 +602,11 @@ if ! declare -f run_as_target >/dev/null 2>&1; then
         # HOME is set explicitly for consistent tool installs and path resolution.
         local -a env_args=("UV_NO_CONFIG=1" "HOME=$user_home")
 
+        # Pass core ACFS variables to the target user environment
+        [[ -n "${TARGET_USER:-}" ]] && env_args+=("TARGET_USER=$TARGET_USER")
+        [[ -n "${TARGET_HOME:-}" ]] && env_args+=("TARGET_HOME=$TARGET_HOME")
+        [[ -n "${ACFS_HOME:-}" ]] && env_args+=("ACFS_HOME=$ACFS_HOME")
+
         # Pass ACFS context variables to the target user environment when available.
         [[ -n "${ACFS_BOOTSTRAP_DIR:-}" ]] && env_args+=("ACFS_BOOTSTRAP_DIR=$ACFS_BOOTSTRAP_DIR")
         [[ -n "${SCRIPT_DIR:-}" ]] && env_args+=("SCRIPT_DIR=$SCRIPT_DIR")
@@ -692,21 +697,35 @@ run_as_root_shell() {
         return $?
     fi
 
+    # Build env string for passing through sudo
+    local env_cmd=""
+    local -a env_args=()
+    [[ -n "${TARGET_USER:-}" ]] && env_args+=("TARGET_USER=$TARGET_USER")
+    [[ -n "${TARGET_HOME:-}" ]] && env_args+=("TARGET_HOME=$TARGET_HOME")
+    [[ -n "${ACFS_HOME:-}" ]] && env_args+=("ACFS_HOME=$ACFS_HOME")
+
+    if [[ ${#env_args[@]} -gt 0 ]]; then
+        env_cmd="env"
+        for kv in "${env_args[@]}"; do
+            env_cmd+=" $(printf %q "$kv")"
+        done
+    fi
+
     if [[ -n "${SUDO:-}" ]]; then
         if [[ -n "$cmd" ]]; then
-            $SUDO bash -c "set -euo pipefail; $cmd"
+            $SUDO $env_cmd bash -c "set -euo pipefail; $cmd"
             return $?
         fi
-        $SUDO bash -c 'set -euo pipefail; (printf "%s\n" "set -euo pipefail"; cat) | bash -s'
+        $SUDO $env_cmd bash -c 'set -euo pipefail; (printf "%s\n" "set -euo pipefail"; cat) | bash -s'
         return $?
     fi
 
     if command -v sudo >/dev/null 2>&1; then
         if [[ -n "$cmd" ]]; then
-            sudo bash -c "set -euo pipefail; $cmd"
+            sudo $env_cmd bash -c "set -euo pipefail; $cmd"
             return $?
         fi
-        sudo bash -c 'set -euo pipefail; (printf "%s\n" "set -euo pipefail"; cat) | bash -s'
+        sudo $env_cmd bash -c 'set -euo pipefail; (printf "%s\n" "set -euo pipefail"; cat) | bash -s'
         return $?
     fi
 
