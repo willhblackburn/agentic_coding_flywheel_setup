@@ -91,6 +91,14 @@ acfs_curl_with_retry_and_sentinel() {
         )" || status=$?
 
         if (( status == 0 )) && [[ "$content" == *"$sentinel" ]]; then
+            # SECURITY: Bash variable capture strips NUL bytes.
+            # If the downloaded content contained NULs (binary data), `content` is now corrupted.
+            # `verify_checksum` relies on this function returning the exact bytes to verifying the hash.
+            # If NULs were stripped, the hash verification will fail (unless the hash was computed on corrupted data).
+            #
+            # CRITICAL: This mechanism supports TEXT-ONLY scripts (e.g. installer shell scripts).
+            # It does NOT support binary files. Binary files must be downloaded to disk
+            # using acfs_curl_with_retry (file-based) and verified with sha256sum on disk.
             (( attempt > 0 )) && log_info "Succeeded on retry ${attempt} for fetching ${name}"
             printf '%s' "$content"
             return 0
@@ -165,14 +173,6 @@ declare -gA KNOWN_INSTALLERS=(
 # ACFS fails closed on checksum mismatch: scripts are NOT executed unless the
 # downloaded bytes match checksums.yaml exactly.
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-CYAN='\033[0;36m'
-DIM='\033[2m'
-NC='\033[0m'
-
 # ============================================================
 # HTTPS Enforcement
 # ============================================================
@@ -189,7 +189,7 @@ enforce_https() {
     local name="${2:-unknown}"
 
     if ! is_https "$url"; then
-        echo -e "${RED}Security Error:${NC} URL for '$name' is not HTTPS" >&2
+        log_error "Security Error: URL for '$name' is not HTTPS"
         printf "  URL: %s\n" "$url" >&2
         echo -e "  All installer URLs must use HTTPS." >&2
         return 1
@@ -208,7 +208,7 @@ calculate_sha256() {
     elif command -v shasum &>/dev/null; then
         shasum -a 256 | cut -d' ' -f1
     else
-        echo "ERROR: No SHA256 tool available" >&2
+        log_error "No SHA256 tool available"
         return 1
     fi
 }
@@ -226,23 +226,28 @@ fetch_checksum() {
     content="$(
         acfs_curl_with_retry_and_sentinel "$url" "$url"
     )" || {
-        echo "ERROR: Failed to fetch $url" >&2
+        log_error "Failed to fetch $url"
         return 1
     }
 
     if [[ "$content" != *"$sentinel" ]]; then
-        echo "ERROR: Failed to fetch $url" >&2
+        log_error "Failed to fetch $url"
         return 1
     fi
     content="${content%"$sentinel"}"
 
     if ! printf '%s' "$content" | calculate_sha256; then
-        echo "ERROR: Failed to checksum $url" >&2
+        log_error "Failed to checksum $url"
         return 1
     fi
 }
 
 # Verify URL content against expected checksum
+#
+# NOTE: This function is safe for TEXT (scripts) content only.
+# It captures content into a bash variable, which strips null bytes.
+# DO NOT use this for binary files (tarballs, executables).
+# Use acfs_download_file_and_verify_sha256 (in install.sh) for binaries.
 verify_checksum() {
     local url="$1"
     local expected_sha256="$2"
@@ -262,24 +267,24 @@ verify_checksum() {
     content="$(
         acfs_curl_with_retry_and_sentinel "$url" "$name"
     )" || {
-        echo -e "${RED}Security Error:${NC} Failed to fetch $name" >&2
+        log_error "Security Error: Failed to fetch $name"
         return 1
     }
 
     if [[ "$content" != *"$sentinel" ]]; then
-        echo -e "${RED}Security Error:${NC} Failed to fetch $name" >&2
+        log_error "Security Error: Failed to fetch $name"
         return 1
     fi
     content="${content%"$sentinel"}"
 
     local actual_sha256
     actual_sha256=$(printf '%s' "$content" | calculate_sha256) || {
-        echo -e "${RED}Security Error:${NC} Failed to checksum $name" >&2
+        log_error "Security Error: Failed to checksum $name"
         return 1
     }
 
     if [[ "$actual_sha256" != "$expected_sha256" ]]; then
-        echo -e "${RED}Security Error:${NC} Checksum mismatch for $name" >&2
+        log_error "Security Error: Checksum mismatch for $name"
         printf "  Expected: %s\n" "$expected_sha256" >&2
         printf "  Actual:   %s\n" "$actual_sha256" >&2
         printf "  URL: %s\n" "$url" >&2
@@ -291,7 +296,7 @@ verify_checksum() {
         return 1
     fi
 
-    echo -e "${GREEN}Verified:${NC} $name" >&2
+    log_success "Verified: $name"
     # Return the verified content (verbatim bytes) on stdout.
     printf '%s' "$content"
 }
@@ -309,7 +314,7 @@ fetch_and_run() {
     fi
 
     if [[ -z "$expected_sha256" ]]; then
-        echo -e "${RED}Security Error:${NC} Missing checksum for $name" >&2
+        log_error "Security Error: Missing checksum for $name"
         printf "  URL: %s\n" "$url" >&2
         echo -e "  Refusing to execute unverified installer script." >&2
         echo -e "  Fix:" >&2
@@ -364,7 +369,7 @@ fetch_and_run_with_recovery() {
     fi
 
     if [[ -z "$expected_sha256" ]]; then
-        echo -e "${RED}Security Error:${NC} Missing checksum for $name" >&2
+        log_error "Security Error: Missing checksum for $name"
         printf "  URL: %s\n" "$url" >&2
         echo -e "  Refusing to execute unverified installer script." >&2
         return 1
@@ -374,12 +379,12 @@ fetch_and_run_with_recovery() {
     local sentinel="${ACFS_EOF_SENTINEL}"
     local content
     content="$(acfs_curl_with_retry_and_sentinel "$url" "$name")" || {
-        echo -e "${RED}Error:${NC} Failed to fetch $name" >&2
+        log_error "Error: Failed to fetch $name"
         return 1
     }
 
     if [[ "$content" != *"$sentinel" ]]; then
-        echo -e "${RED}Error:${NC} Failed to fetch $name" >&2
+        log_error "Error: Failed to fetch $name"
         return 1
     fi
     content="${content%"$sentinel"}"
@@ -387,7 +392,7 @@ fetch_and_run_with_recovery() {
     # Calculate actual checksum
     local actual_sha256
     actual_sha256=$(printf '%s' "$content" | calculate_sha256) || {
-        echo -e "${RED}Error:${NC} Failed to calculate checksum for $name" >&2
+        log_error "Error: Failed to calculate checksum for $name"
         return 1
     }
 
@@ -400,7 +405,7 @@ fetch_and_run_with_recovery() {
         case $mismatch_result in
             0)
                 # Skip - tool was skipped, continue installation
-                echo -e "${YELLOW}Skipped:${NC} $name (checksum mismatch)" >&2
+                log_info "Skipped: $name (checksum mismatch)"
                 return 0
                 ;;
             1)
@@ -409,12 +414,12 @@ fetch_and_run_with_recovery() {
                 ;;
             *)
                 # Unknown result, abort for safety
-                echo -e "${RED}Error:${NC} Unexpected handler result" >&2
+                log_error "Unexpected handler result"
                 return 1
                 ;;
         esac
     else
-        echo -e "${GREEN}Verified:${NC} $name" >&2
+        log_success "Verified: $name"
     fi
 
     # Run the installer
@@ -489,7 +494,10 @@ load_checksums() {
     local tool_indent=""
 
     if [[ ! -r "$file" ]]; then
-        echo -e "${YELLOW}Warning:${NC} Checksums file not found: $file" >&2
+        # Use ACFS_YELLOW if available (logging.sh), else literal or plain
+        local warn_color="${ACFS_YELLOW:-\033[0;33m}"
+        local nc_color="${ACFS_NC:-\033[0m}"
+        echo -e "${warn_color}Warning:${nc_color} Checksums file not found: $file" >&2
         return 1
     fi
 
@@ -1074,23 +1082,33 @@ verify_all_installers_json() {
         local tmp_err=""
 
         # Create temp file for stderr capture
+        # Fallback to empty if mktemp fails (no capture), do NOT use predictable /tmp paths.
         if command -v mktemp &>/dev/null; then
-            tmp_err=$(mktemp 2>/dev/null) || tmp_err="/tmp/acfs-err-$RANDOM"
+            tmp_err=$(mktemp 2>/dev/null) || tmp_err=""
         else
-            tmp_err="/tmp/acfs-err-$RANDOM"
+            tmp_err=""
         fi
 
-        # Capture stdout to variable, stderr to file
-        if actual=$(fetch_checksum "$url" 2>"$tmp_err"); then
-            # Success: actual contains the hash
-            :
+        # Capture stdout to variable, stderr to file (if tmp_err exists)
+        if [[ -n "$tmp_err" ]]; then
+            if actual=$(fetch_checksum "$url" 2>"$tmp_err"); then
+                # Success
+                :
+            else
+                # Failure
+                fetch_error=$(cat "$tmp_err")
+                [[ -z "$fetch_error" ]] && fetch_error="Unknown error fetching checksum"
+            fi
+            rm -f "$tmp_err"
         else
-            # Failure: read error from stderr capture
-            fetch_error=$(cat "$tmp_err")
-            # Fallback if empty
-            [[ -z "$fetch_error" ]] && fetch_error="Unknown error fetching checksum"
+            # Fallback: capture combined output or lose stderr if we can't separate them safely
+            # without a temp file. Here we prioritize safety over error details.
+            if actual=$(fetch_checksum "$url" 2>/dev/null); then
+                :
+            else
+                fetch_error="Unknown error (mktemp failed, stderr unavailable)"
+            fi
         fi
-        rm -f "$tmp_err"
 
         if [[ -n "$fetch_error" ]]; then
             local escaped_error
