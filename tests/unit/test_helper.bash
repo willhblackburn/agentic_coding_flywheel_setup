@@ -73,7 +73,7 @@ load_bats_helpers() {
         # Minimal assert_output
         assert_output() {
             local expected="$1"
-            if [[ "$2" == "--partial" ]]; then
+            if [[ "${2:-}" == "--partial" ]]; then
                 expected="$1"
                 if [[ "$output" != *"$expected"* ]]; then
                     echo "Expected partial output '$expected' not found in:"
@@ -81,7 +81,7 @@ load_bats_helpers() {
                     return 1
                 fi
             elif [[ "$1" == "--partial" ]]; then
-                expected="$2"
+                expected="${2:-}"
                 if [[ "$output" != *"$expected"* ]]; then
                     echo "Expected partial output '$expected' not found in:"
                     echo "$output"
@@ -105,6 +105,15 @@ load_bats_helpers() {
             if [[ "$output" == *"$unexpected"* ]]; then
                 echo "Unexpected output '$unexpected' found in:"
                 echo "$output"
+                return 1
+            fi
+        }
+
+        # Minimal assert_equal
+        assert_equal() {
+            if [[ "$1" != "$2" ]]; then
+                echo "Expected: $2"
+                echo "Actual:   $1"
                 return 1
             fi
         }
@@ -167,6 +176,14 @@ setup_mock_terminal() {
     export LINES=24
     # Disable any interactive prompts
     export ACFS_NONINTERACTIVE=1
+    
+    # Disable colors for easier matching
+    export ACFS_RED=""
+    export ACFS_GREEN=""
+    export ACFS_YELLOW=""
+    export ACFS_BLUE=""
+    export ACFS_GRAY=""
+    export ACFS_NC=""
 }
 
 # Reset terminal settings
@@ -244,6 +261,81 @@ cleanup_temp_dirs() {
         [[ -d "$dir" ]] && rm -rf "$dir"
     done
     TEMP_DIRS=()
+}
+
+# Create a temporary file with optional content
+# Usage: create_temp_file [content]
+# Returns: path to temp file
+create_temp_file() {
+    local content="${1:-}"
+    local tmpfile
+    tmpfile=$(mktemp)
+    # Track the file via a temp dir wrapper or just rely on OS cleanup?
+    # Better to put it in a tracked temp dir.
+    
+    if [[ ${#TEMP_DIRS[@]} -eq 0 ]]; then
+        create_temp_dir >/dev/null
+    fi
+    local dir="${TEMP_DIRS[0]}"
+    tmpfile=$(mktemp -p "$dir")
+    
+    if [[ -n "$content" ]]; then
+        echo "$content" > "$tmpfile"
+    fi
+    echo "$tmpfile"
+}
+
+# ============================================================
+# Command Stubbing (PATH manipulation)
+# ============================================================
+
+# Directory for stubbed commands
+STUB_DIR=""
+
+# Initialize stub directory
+init_stub_dir() {
+    if [[ -z "$STUB_DIR" ]]; then
+        STUB_DIR=$(create_temp_dir)
+        export PATH="$STUB_DIR:$PATH"
+        log_debug "Initialized stub directory: $STUB_DIR"
+    fi
+}
+
+# Stub a command to return specific output and/or exit code
+# Usage: stub_command "cmd_name" "output" [exit_code]
+stub_command() {
+    init_stub_dir
+    local cmd="$1"
+    local output="${2:-}"
+    local exit_code="${3:-0}"
+    local stub_path="$STUB_DIR/$cmd"
+
+    cat > "$stub_path" <<EOF
+#!/bin/bash
+printf '%s' "$output"
+exit $exit_code
+EOF
+    chmod +x "$stub_path"
+    log_debug "Stubbed command: $cmd (exit $exit_code)"
+}
+
+# Stub a command to act as a spy (log args to file)
+# Usage: spy_command "cmd_name" [exit_code]
+# Logs calls to: $STUB_DIR/cmd_name.log
+spy_command() {
+    init_stub_dir
+    local cmd="$1"
+    local exit_code="${2:-0}"
+    local stub_path="$STUB_DIR/$cmd"
+    local log_path="$STUB_DIR/$cmd.log"
+
+    cat > "$stub_path" <<EOF
+#!/bin/bash
+echo "\$@" >> "$log_path"
+exit $exit_code
+EOF
+    chmod +x "$stub_path"
+    log_debug "Spied command: $cmd (logging to $log_path)"
 }
 
 # ============================================================
@@ -341,6 +433,9 @@ source_lib() {
     local lib_path="$ACFS_LIB_DIR/${lib_name}.sh"
 
     if [[ ! -f "$lib_path" ]]; then
+        echo "DEBUG: ACFS_LIB_DIR=$ACFS_LIB_DIR" >&2
+        echo "DEBUG: PROJECT_ROOT=$PROJECT_ROOT" >&2
+        echo "DEBUG: TESTS_DIR=$TESTS_DIR" >&2
         log_fail "Library not found: $lib_path"
         return 1
     fi
