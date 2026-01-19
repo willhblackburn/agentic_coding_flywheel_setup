@@ -51,7 +51,7 @@ declare -gA AGENTS_SECTION_META=(
     ["code_editing"]="Code Editing Discipline|true|"
     ["console_output"]="Console Output|false|"
     ["landing_the_plane"]="Landing the Plane|true|"
-    ["issue_tracking"]="Issue Tracking with bd|false|"
+    ["issue_tracking"]="Issue Tracking with br|false|"
 )
 
 # ============================================================
@@ -463,34 +463,37 @@ EOF
 _section_issue_tracking() {
     cat << 'EOF'
 
-## Issue Tracking with bd (beads)
+## Issue Tracking with br (Beads)
 
-All issue tracking goes through **bd**. No other TODO systems.
+All issue tracking goes through **Beads**. No other TODO systems.
+
+**Note:** `br` is a convenience alias (installed by `acfs/zsh/acfs.zshrc`) for the real Beads CLI: `bd`.
+If `br` is unavailable (CI / non-interactive shells), use `bd` directly.
 
 Key invariants:
 - `.beads/` is authoritative state and **must always be committed** with code changes.
-- Do not edit `.beads/*.jsonl` directly; only via `bd`.
+- Do not edit `.beads/*.jsonl` directly; only via `br` / `bd`.
 
 ### Basics
 
 Check ready work:
 ```bash
-bd ready
+br ready
 ```
 
 Create issues:
 ```bash
-bd create "Issue title" -t bug|feature|task -p 0-4
+br create "Issue title" -t bug|feature|task -p 0-4
 ```
 
 Update:
 ```bash
-bd update <id> --status in_progress
+br update <id> --status in_progress
 ```
 
 Complete:
 ```bash
-bd close <id> --reason "Completed"
+br close <id> --reason "Completed"
 ```
 
 Types: `bug`, `feature`, `task`, `epic`, `chore`
@@ -503,8 +506,8 @@ Priorities:
 - `4` backlog
 
 Agent workflow:
-1. `bd ready` to find unblocked work.
-2. Claim: `bd update <id> --status in_progress`.
+1. `br ready` to find unblocked work.
+2. Claim: `br update <id> --status in_progress`.
 3. Implement + test.
 4. Close when done.
 5. Commit `.beads/` in the same commit as code changes.
