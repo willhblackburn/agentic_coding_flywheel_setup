@@ -426,14 +426,21 @@ The installer is the heart of ACFS—a modular Bash script that transforms a fre
 
 ### Usage
 
+Full vibe mode (recommended for throwaway VPS):
+
 ```bash
-# Full vibe mode (recommended for throwaway VPS)
 curl -fsSL "https://raw.githubusercontent.com/Dicklesworthstone/agentic_coding_flywheel_setup/main/install.sh?$(date +%s)" | bash -s -- --yes --mode vibe
+```
 
-# Interactive mode (asks for confirmation)
+Interactive mode (asks for confirmation):
+
+```bash
 curl -fsSL "https://raw.githubusercontent.com/Dicklesworthstone/agentic_coding_flywheel_setup/main/install.sh" | bash
+```
 
-# Safe mode (no passwordless sudo, agent confirmations enabled)
+Safe mode (no passwordless sudo, agent confirmations enabled):
+
+```bash
 curl -fsSL "https://raw.githubusercontent.com/Dicklesworthstone/agentic_coding_flywheel_setup/main/install.sh" | bash -s -- --mode safe
 ```
 
@@ -540,7 +547,6 @@ curl -fsSL "https://raw.githubusercontent.com/Dicklesworthstone/agentic_coding_f
 
 **To specify a different target version:**
 ```bash
-# Upgrade only to 25.04 instead of 25.10
 curl -fsSL "https://raw.githubusercontent.com/Dicklesworthstone/agentic_coding_flywheel_setup/main/install.sh" | bash -s -- --yes --mode vibe --target-ubuntu=25.04
 ```
 
@@ -2019,9 +2025,12 @@ Available packs: `database.*`, `containers.*`, `kubernetes.*`, `cloud.*`, `infra
 ### Quick Start
 
 ```bash
-# Install
 curl -fsSL "https://raw.githubusercontent.com/Dicklesworthstone/repo_updater/main/install.sh?ru_cb=$(date +%s)" | bash
+```
 
+Initialize configuration:
+
+```bash
 # Initialize configuration
 ru init --example
 
@@ -3656,7 +3665,6 @@ for f in ~/.zshrc ~/.tmux.conf ~/.p10k.zsh; do
   [ -f "$f" ] && mv "$f" "$f".backup."$ts"
 done
 
-# Re-run installer fresh
 curl -fsSL "https://raw.githubusercontent.com/Dicklesworthstone/agentic_coding_flywheel_setup/main/install.sh?$(date +%s)" | bash -s -- --yes --mode vibe --force-reinstall
 ```
 
@@ -3702,9 +3710,8 @@ Our response:
 
 For maximum security, you can:
 ```bash
-# Download first, audit, then execute
 curl -fsSL "https://..." -o install.sh
-less install.sh  # Review the code
+less install.sh
 bash install.sh --yes --mode vibe
 ```
 
@@ -3998,14 +4005,21 @@ Fine-grained control over what gets installed using manifest-driven selection:
 - **Deterministic:** `--print-plan` shows exactly what will run, in what order
 
 **Examples:**
+Only install agents (plus their dependencies):
+
 ```bash
-# Only install agents (plus their dependencies)
 curl -fsSL "..." | bash -s -- --yes --only-phase agents
+```
 
-# Skip PostgreSQL and Vault
+Skip PostgreSQL and Vault:
+
+```bash
 curl -fsSL "..." | bash -s -- --yes --skip db.postgres18 --skip tools.vault
+```
 
-# Preview what would run without executing
+Preview what would run without executing:
+
+```bash
 curl -fsSL "..." | bash -s -- --print-plan
 ```
 
