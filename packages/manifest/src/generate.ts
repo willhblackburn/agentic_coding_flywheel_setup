@@ -13,7 +13,7 @@ import { writeFileSync, mkdirSync, readFileSync, existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
-import { parseManifestFile, validateManifest as validateManifestBasic } from './parser.js';
+import { parseManifestFile, validateManifestData } from './parser.js';
 import {
   validateManifest as validateManifestAdvanced,
   formatValidationErrors,
@@ -1167,7 +1167,7 @@ async function main(): Promise<void> {
   // Preflight: validate dependency graph + generator invariants.
   // - Basic validation returns user-facing warnings (e.g., install steps that are descriptions).
   // - Advanced validation catches generator-breaking issues (e.g., function-name collisions).
-  const basicValidation = validateManifestBasic(manifest);
+  const basicValidation = validateManifestData(manifest);
   if (!basicValidation.valid) {
     console.error('');
     console.error(

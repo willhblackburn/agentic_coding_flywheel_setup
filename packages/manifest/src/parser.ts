@@ -182,25 +182,9 @@ export function parseManifestString(yamlContent: string): ParseResult<Manifest> 
  * @param manifest - Manifest object to validate
  * @returns Validation result with errors and warnings
  */
-export function validateManifest(manifest: unknown): ValidationResult {
+export function validateManifestData(data: Manifest): ValidationResult {
   const errors: ValidationError[] = [];
   const warnings: ValidationWarning[] = [];
-
-  // Schema validation
-  const schemaResult = ManifestSchema.safeParse(manifest);
-
-  if (!schemaResult.success) {
-    for (const issue of schemaResult.error.issues) {
-      errors.push({
-        path: issue.path.join('.'),
-        message: issue.message,
-        value: undefined,
-      });
-    }
-    return { valid: false, errors, warnings };
-  }
-
-  const data = schemaResult.data as Manifest;
 
   // Check for duplicate module IDs
   const seenIds = new Set<string>();
@@ -264,6 +248,27 @@ export function validateManifest(manifest: unknown): ValidationResult {
     errors,
     warnings,
   };
+}
+
+export function validateManifest(manifest: unknown): ValidationResult {
+  const errors: ValidationError[] = [];
+  const warnings: ValidationWarning[] = [];
+
+  // Schema validation
+  const schemaResult = ManifestSchema.safeParse(manifest);
+
+  if (!schemaResult.success) {
+    for (const issue of schemaResult.error.issues) {
+      errors.push({
+        path: issue.path.join('.'),
+        message: issue.message,
+        value: undefined,
+      });
+    }
+    return { valid: false, errors, warnings };
+  }
+
+  return validateManifestData(schemaResult.data as Manifest);
 }
 
 /**
