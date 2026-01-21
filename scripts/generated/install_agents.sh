@@ -180,13 +180,16 @@ install_agents_codex() {
     log_step "Installing agents.codex"
 
     if [[ "${DRY_RUN:-false}" = "true" ]]; then
-        log_info "dry-run: install: ~/.bun/bin/bun install -g --trust @openai/codex@latest (target_user)"
+        log_info "dry-run: install: if ! ~/.bun/bin/bun install -g --trust @openai/codex@latest; then (target_user)"
     else
         if ! run_as_target_shell <<'INSTALL_AGENTS_CODEX'
-~/.bun/bin/bun install -g --trust @openai/codex@latest
+if ! ~/.bun/bin/bun install -g --trust @openai/codex@latest; then
+  echo "WARN: Codex CLI latest tag install failed; retrying @openai/codex" >&2
+  ~/.bun/bin/bun install -g --trust @openai/codex
+fi
 INSTALL_AGENTS_CODEX
         then
-            log_error "agents.codex: install command failed: ~/.bun/bin/bun install -g --trust @openai/codex@latest"
+            log_error "agents.codex: install command failed: if ! ~/.bun/bin/bun install -g --trust @openai/codex@latest; then"
             return 1
         fi
     fi

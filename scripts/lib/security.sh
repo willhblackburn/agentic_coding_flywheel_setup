@@ -177,6 +177,7 @@ declare -gA KNOWN_INSTALLERS=(
     [xf]="https://raw.githubusercontent.com/Dicklesworthstone/xf/main/install.sh"
     [giil]="https://raw.githubusercontent.com/Dicklesworthstone/giil/main/install.sh"
     [csctf]="https://raw.githubusercontent.com/Dicklesworthstone/chat_shared_conversation_to_file/main/install.sh"
+    [jfp]="https://jeffreysprompts.com/install-cli.sh"
 )
 
 # ============================================================

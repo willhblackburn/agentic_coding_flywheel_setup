@@ -1,4 +1,4 @@
-# checksums.yaml - Auto-generated 2026-01-21T15:54:46-05:00
+# checksums.yaml - Auto-generated 2026-01-21T15:55:57-05:00
 # Run: ./scripts/lib/security.sh --update-checksums
 
 installers:
@@ -85,6 +85,10 @@ installers:
   nvm:
     url: "https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh"
     sha256: "abdb525ee9f5b48b34d8ed9fc67c6013fb0f659712e401ecd88ab989b3af8f53"
+
+  jfp:
+    url: "https://jeffreysprompts.com/install-cli.sh"
+    sha256: "97db629240b4065349e63601f05cd483fcec4b1e16008e986d6eed3c3a0367b7"
 
   rust:
     url: "https://sh.rustup.rs"
