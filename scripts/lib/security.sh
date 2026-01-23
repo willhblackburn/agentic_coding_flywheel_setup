@@ -66,13 +66,16 @@ acfs_is_retryable_curl_exit_code() {
     esac
 }
 
-# Fetch URL content with retries and an EOF sentinel appended.
-# - Prints: <content><sentinel> on stdout (no trailing newline)
-# - Returns: 0 on success; curl exit code on non-retryable failures; 1 on exhausted retries
-acfs_curl_with_retry_and_sentinel() {
+# Download URL to a file with retries.
+# Arguments:
+#   $1 - URL
+#   $2 - Output path
+#   $3 - Name (for logging)
+# Returns: 0 on success, curl exit code on failure
+acfs_download_to_file() {
     local url="$1"
-    local name="${2:-$url}"
-    local sentinel="${ACFS_EOF_SENTINEL}"
+    local output_path="$2"
+    local name="${3:-$url}"
 
     local max_attempts="${#ACFS_CURL_RETRY_DELAYS[@]}"
     if (( max_attempts == 0 )); then
@@ -81,7 +84,11 @@ acfs_curl_with_retry_and_sentinel() {
     fi
 
     local retries=$((max_attempts - 1))
-    local attempt delay
+    local attempt delay status=0
+
+    # Ensure parent dir exists
+    mkdir -p "$(dirname "$output_path")"
+
     for ((attempt=0; attempt<max_attempts; attempt++)); do
         delay="${ACFS_CURL_RETRY_DELAYS[$attempt]}"
 
@@ -90,26 +97,12 @@ acfs_curl_with_retry_and_sentinel() {
             sleep "$delay"
         fi
 
-        local content status=0
-        # IMPORTANT: keep this `curl` call set -e-safe so transient failures
-        # don't abort the whole installer before our retry logic runs.
-        content="$(
-            acfs_curl "$url" 2>/dev/null || exit $?
-            printf '%s' "$sentinel"
-        )" || status=$?
-
-        if (( status == 0 )) && [[ "$content" == *"$sentinel" ]]; then
-            # SECURITY: Bash variable capture strips NUL bytes.
-            # If the downloaded content contained NULs (binary data), `content` is now corrupted.
-            # `verify_checksum` relies on this function returning the exact bytes to verifying the hash.
-            # If NULs were stripped, the hash verification will fail (unless the hash was computed on corrupted data).
-            #
-            # CRITICAL: This mechanism supports TEXT-ONLY scripts (e.g. installer shell scripts).
-            # It does NOT support binary files. Binary files must be downloaded to disk
-            # using acfs_curl_with_retry (file-based) and verified with sha256sum on disk.
+        # Use -o to save to file directly
+        if acfs_curl "$url" -o "$output_path"; then
             (( attempt > 0 )) && log_info "Succeeded on retry ${attempt} for fetching ${name}"
-            printf '%s' "$content"
             return 0
+        else
+            status=$?
         fi
 
         if ! acfs_is_retryable_curl_exit_code "$status"; then
@@ -117,6 +110,7 @@ acfs_curl_with_retry_and_sentinel() {
         fi
     done
 
+    log_error "Failed to download $name after $max_attempts attempts (exit code $status)"
     return 1
 }
 
@@ -215,19 +209,27 @@ enforce_https() {
 # Checksum Verification
 # ============================================================
 
-# Calculate SHA256 of content
-calculate_sha256() {
+# Calculate SHA256 of a file
+# Arguments:
+#   $1 - File path
+calculate_file_sha256() {
+    local filepath="$1"
+    if [[ ! -r "$filepath" ]]; then
+        log_error "Cannot read file for checksum: $filepath"
+        return 1
+    fi
+
     if command -v sha256sum &>/dev/null; then
-        sha256sum | cut -d' ' -f1
+        sha256sum "$filepath" | cut -d' ' -f1
     elif command -v shasum &>/dev/null; then
-        shasum -a 256 | cut -d' ' -f1
+        shasum -a 256 "$filepath" | cut -d' ' -f1
     else
         log_error "No SHA256 tool available"
         return 1
     fi
 }
 
-# Fetch content and calculate checksum
+# Fetch content and calculate checksum (using temp file)
 fetch_checksum() {
     local url="$1"
 
@@ -235,22 +237,23 @@ fetch_checksum() {
         return 1
     fi
 
-    local sentinel="${ACFS_EOF_SENTINEL}"
-    local content
-    content="$(
-        acfs_curl_with_retry_and_sentinel "$url" "$url"
-    )" || {
-        log_error "Failed to fetch $url"
+    # Create safe temp file
+    local tmp_file
+    tmp_file="$(mktemp "${TMPDIR:-/tmp}/acfs-fetch.XXXXXX")" || {
+        log_error "Failed to create temp file"
         return 1
     }
+    
+    # Ensure cleanup
+    # shellcheck disable=SC2064
+    trap "rm -f '$tmp_file'" RETURN
 
-    if [[ "$content" != *"$sentinel" ]]; then
+    if ! acfs_download_to_file "$url" "$tmp_file" "$url"; then
         log_error "Failed to fetch $url"
         return 1
     fi
-    content="${content%"$sentinel"}"
 
-    if ! printf '%s' "$content" | calculate_sha256; then
+    if ! calculate_file_sha256 "$tmp_file"; then
         log_error "Failed to checksum $url"
         return 1
     fi
@@ -258,10 +261,14 @@ fetch_checksum() {
 
 # Verify URL content against expected checksum
 #
-# NOTE: This function is safe for TEXT (scripts) content only.
-# It captures content into a bash variable, which strips null bytes.
-# DO NOT use this for binary files (tarballs, executables).
-# Use acfs_download_file_and_verify_sha256 (in install.sh) for binaries.
+# Downloads to a temporary file, verifies the checksum, and if valid,
+# prints the content to stdout. This ensures binary safety (no null byte stripping)
+# and verification before execution.
+#
+# Arguments:
+#   $1 - URL
+#   $2 - Expected SHA256
+#   $3 - Name (for logging)
 verify_checksum() {
     local url="$1"
     local expected_sha256="$2"
@@ -271,28 +278,24 @@ verify_checksum() {
         return 1
     fi
 
-    # Fetch once and verify the exact bytes we will output/run.
-    #
-    # NOTE: Bash command substitution trims trailing newlines, so we append a
-    # sentinel token to preserve the original content verbatim (including
-    # trailing newlines) without writing temp files.
-    local sentinel="${ACFS_EOF_SENTINEL}"
-    local content
-    content="$(
-        acfs_curl_with_retry_and_sentinel "$url" "$name"
-    )" || {
-        log_error "Security Error: Failed to fetch $name"
+    # Create safe temp file
+    local tmp_file
+    tmp_file="$(mktemp "${TMPDIR:-/tmp}/acfs-verify.XXXXXX")" || {
+        log_error "Failed to create temp file for $name"
         return 1
     }
 
-    if [[ "$content" != *"$sentinel" ]]; then
+    # Ensure cleanup
+    # shellcheck disable=SC2064
+    trap "rm -f '$tmp_file'" RETURN
+
+    if ! acfs_download_to_file "$url" "$tmp_file" "$name"; then
         log_error "Security Error: Failed to fetch $name"
         return 1
     fi
-    content="${content%"$sentinel"}"
 
     local actual_sha256
-    actual_sha256=$(printf '%s' "$content" | calculate_sha256) || {
+    actual_sha256=$(calculate_file_sha256 "$tmp_file") || {
         log_error "Security Error: Failed to checksum $name"
         return 1
     }
@@ -312,7 +315,7 @@ verify_checksum() {
 
     log_success "Verified: $name"
     # Return the verified content (verbatim bytes) on stdout.
-    printf '%s' "$content"
+    cat "$tmp_file"
 }
 
 # Fetch and run with optional verification

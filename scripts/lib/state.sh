@@ -375,7 +375,21 @@ _state_acquire_lock() {
     mkdir -p "$(dirname "$state_file")" 2>/dev/null
 
     while ! mkdir "$lock_dir" 2>/dev/null; do
-        [[ $retries -eq 0 ]] && return 1
+        if [[ $retries -eq 0 ]]; then
+            # Lock timed out. Since state operations are fast (ms), 
+            # a 5s wait implies a stale lock from a crashed process.
+            # Force break the lock and try one last time.
+            if [[ -d "$lock_dir" ]]; then
+                # Try to remove it (rmdir is safe, fails if not empty)
+                rmdir "$lock_dir" 2>/dev/null || rm -rf "$lock_dir" 2>/dev/null
+                
+                # Retry acquisition immediately
+                if mkdir "$lock_dir" 2>/dev/null; then
+                    return 0
+                fi
+            fi
+            return 1
+        fi
         ((retries--))
         sleep 0.1
     done
