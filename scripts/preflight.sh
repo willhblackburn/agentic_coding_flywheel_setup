@@ -6,9 +6,10 @@
 # with clear, actionable error messages.
 #
 # Usage:
-#   ./scripts/preflight.sh           # Full check with colored output
-#   ./scripts/preflight.sh --quiet   # Exit code only
-#   ./scripts/preflight.sh --json    # JSON output for automation
+#   ./scripts/preflight.sh               # Full check with colored output
+#   ./scripts/preflight.sh --quiet       # Exit code only
+#   ./scripts/preflight.sh --json        # JSON output for automation
+#   ./scripts/preflight.sh --format toon # TOON output for automation
 #
 # Exit Codes:
 #   0: All critical checks pass (warnings are OK)
@@ -44,7 +45,8 @@ WARNINGS=0
 
 # Output mode
 QUIET=false
-JSON_OUTPUT=false
+OUTPUT_FORMAT="text" # text|json|toon
+MACHINE_OUTPUT=false
 
 # Results for JSON output
 declare -a RESULTS=()
@@ -60,15 +62,34 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --json)
-            JSON_OUTPUT=true
+            OUTPUT_FORMAT="json"
+            MACHINE_OUTPUT=true
+            shift
+            ;;
+        --format)
+            if [[ -z "${2:-}" ]]; then
+                echo "Error: --format requires an argument (json|toon)" >&2
+                exit 1
+            fi
+            case "$2" in
+                json|toon)
+                    OUTPUT_FORMAT="$2"
+                    MACHINE_OUTPUT=true
+                    ;;
+                *)
+                    echo "Error: invalid --format '$2' (expected json|toon)" >&2
+                    exit 1
+                    ;;
+            esac
             shift
             ;;
         --help|-h)
-            echo "Usage: $0 [--quiet] [--json]"
+            echo "Usage: $0 [--quiet] [--json|--format json|toon]"
             echo ""
             echo "Options:"
             echo "  --quiet, -q  Suppress output, exit code only"
             echo "  --json       Output results as JSON"
+            echo "  --format     Output results as json or toon"
             echo "  --help, -h   Show this help message"
             exit 0
             ;;
@@ -98,7 +119,7 @@ log_check() {
     local message="$2"
     local detail="${3:-}"
 
-    if [[ "$JSON_OUTPUT" == "true" ]]; then
+    if [[ "$MACHINE_OUTPUT" == "true" ]]; then
         # Escape quotes in message and detail for JSON
         message="$(json_escape "$message")"
         detail="$(json_escape "$detail")"
@@ -452,7 +473,7 @@ check_conflicts() {
 # ============================================================
 
 main() {
-    if [[ "$QUIET" != "true" && "$JSON_OUTPUT" != "true" ]]; then
+    if [[ "$QUIET" != "true" && "$MACHINE_OUTPUT" != "true" ]]; then
         echo -e "${BOLD}ACFS Pre-Flight Check${NC}"
         echo "====================="
         echo ""
@@ -464,43 +485,56 @@ main() {
     check_memory
     check_disk
 
-    [[ "$QUIET" != "true" && "$JSON_OUTPUT" != "true" ]] && echo ""
+    [[ "$QUIET" != "true" && "$MACHINE_OUTPUT" != "true" ]] && echo ""
 
     check_network_basic
     check_network_installers
 
-    [[ "$QUIET" != "true" && "$JSON_OUTPUT" != "true" ]] && echo ""
+    [[ "$QUIET" != "true" && "$MACHINE_OUTPUT" != "true" ]] && echo ""
 
     check_apt_lock
 
-    [[ "$QUIET" != "true" && "$JSON_OUTPUT" != "true" ]] && echo ""
+    [[ "$QUIET" != "true" && "$MACHINE_OUTPUT" != "true" ]] && echo ""
 
     check_user
     check_shell
     check_sudo
 
-    [[ "$QUIET" != "true" && "$JSON_OUTPUT" != "true" ]] && echo ""
+    [[ "$QUIET" != "true" && "$MACHINE_OUTPUT" != "true" ]] && echo ""
 
     check_conflicts
 
     # Summary
-    if [[ "$JSON_OUTPUT" == "true" ]]; then
-        echo "{"
-        echo "  \"errors\": $ERRORS,"
-        echo "  \"warnings\": $WARNINGS,"
-        echo "  \"checks\": ["
-        local first=true
-        for result in "${RESULTS[@]}"; do
-            if [[ "$first" == "true" ]]; then
-                first=false
+    if [[ "$MACHINE_OUTPUT" == "true" ]]; then
+        emit_json_summary() {
+            echo "{"
+            echo "  \"errors\": $ERRORS,"
+            echo "  \"warnings\": $WARNINGS,"
+            echo "  \"checks\": ["
+            local first=true
+            for result in "${RESULTS[@]}"; do
+                if [[ "$first" == "true" ]]; then
+                    first=false
+                else
+                    echo ","
+                fi
+                echo -n "    $result"
+            done
+            echo ""
+            echo "  ]"
+            echo "}"
+        }
+
+        if [[ "$OUTPUT_FORMAT" == "toon" ]]; then
+            if ! command -v tru >/dev/null 2>&1; then
+                echo "Warning: --format toon requested but 'tru' not found; using JSON" >&2
+                emit_json_summary
             else
-                echo ","
+                emit_json_summary | tru --encode
             fi
-            echo -n "    $result"
-        done
-        echo ""
-        echo "  ]"
-        echo "}"
+        else
+            emit_json_summary
+        fi
     elif [[ "$QUIET" != "true" ]]; then
         echo ""
         echo "====================="
