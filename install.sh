@@ -1844,6 +1844,33 @@ ensure_root() {
     fi
 }
 
+# Disable needrestart's apt hook to prevent installation hangs.
+# On Ubuntu 22.04+, needrestart hooks into apt via /usr/lib/needrestart/apt-pinvoke
+# and can wait for interactive input even with NEEDRESTART_SUSPEND=1, because sudo
+# drops the environment variable. This function disables the hook proactively.
+disable_needrestart_apt_hook() {
+    local apt_hook="/usr/lib/needrestart/apt-pinvoke"
+    local nr_conf_dir="/etc/needrestart/conf.d"
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        if [[ -f "$apt_hook" ]]; then
+            log_detail "dry-run: would disable needrestart apt hook at $apt_hook"
+        fi
+        return 0
+    fi
+
+    # Method 1: Disable the apt hook executable (prevents it from running)
+    if [[ -f "$apt_hook" && -x "$apt_hook" ]]; then
+        log_detail "Disabling needrestart apt hook to prevent installation hangs"
+        $SUDO chmod -x "$apt_hook" 2>/dev/null || true
+    fi
+
+    # Method 2: Configure needrestart to auto-restart services without prompting
+    if [[ -d "$nr_conf_dir" ]] || $SUDO mkdir -p "$nr_conf_dir" 2>/dev/null; then
+        echo '$nrconf{restart} = '\''a'\'';' | $SUDO tee "$nr_conf_dir/50-acfs-noninteractive.conf" >/dev/null 2>&1 || true
+    fi
+}
+
 acfs_chown_tree() {
     local owner_group="$1"
     local path="$2"
@@ -4499,6 +4526,7 @@ main() {
     fi
 
     ensure_root
+    disable_needrestart_apt_hook  # Prevent apt hangs on Ubuntu 22.04+ (issue #70)
     validate_target_user
     init_target_paths
     ensure_ubuntu
