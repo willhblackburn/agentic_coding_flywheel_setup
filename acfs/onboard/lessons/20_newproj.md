@@ -10,7 +10,7 @@ When you create a project with `ntm spawn`, you get a tmux session with agents.
 But agents work better when they have:
 
 - **AGENTS.md** - Project-specific guidance for AI agents
-- **Beads (bd)** - Local issue tracking for planning and progress
+- **Beads (br)** - Local issue tracking for planning and progress
 - **Claude settings** - Project-specific Claude Code configuration
 - **Proper .gitignore** - Ignores build artifacts, secrets, etc.
 

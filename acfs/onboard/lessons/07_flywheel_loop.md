@@ -128,7 +128,7 @@ Here's how a real session might look:
 ```bash
 # 1. Plan your work
 bv                              # Check tasks
-bd ready                        # See what's ready to work on
+br ready                        # See what's ready to work on
 
 # 2. Start your agents
 ntm spawn myproject --cc=2 --cod=1
@@ -150,7 +150,7 @@ ubs .                           # Check for bugs
 cm reflect                      # Distill learnings
 
 # 8. Close the task
-bd close <task-id>
+br close <task-id>
 ```
 
 ---
@@ -179,7 +179,7 @@ acfs newproj my-first-project --interactive
 # This creates:
 # - /data/projects/my-first-project
 # - Git repository initialized
-# - Beads (bd) for task tracking
+# - Beads (br) for task tracking
 # - AGENTS.md with project guidance
 # - Claude settings
 
