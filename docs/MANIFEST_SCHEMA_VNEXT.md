@@ -116,6 +116,38 @@ installed_check:
 | `notes` | string[] | `[]` | Maintainer notes (not executed) |
 | `docs_url` | string | (none) | URL to external documentation |
 
+### Web Metadata Fields (`web` block)
+
+The `web` block drives website content generation. All fields are optional; the entire block is optional on a module. Modules without `web` (or with `web.visible: false`) are not displayed on the website.
+
+| Field | Type | Max Length | Description |
+|-------|------|------------|-------------|
+| `display_name` | string | 100 | Full display name for UI (e.g., "MCP Agent Mail") |
+| `short_name` | string | 30 | Abbreviated name (e.g., "MAM") |
+| `tagline` | string | 200 | One-line marketing tagline |
+| `short_desc` | string | 500 | 1-2 sentence description |
+| `icon` | string | 50 | Lucide icon name, kebab-case (e.g., "terminal-square") |
+| `color` | string | 7 | 6-digit hex color (e.g., "#3B82F6") |
+| `category_label` | string | 50 | Category for UI grouping (e.g., "Stack Tools") |
+| `href` | string | - | Internal path (e.g., "/learn/tools/agent-mail") or external URL |
+| `features` | string[] | 20 items | Feature bullet points |
+| `tech_stack` | string[] | 20 items | Technologies used (e.g., ["Rust", "SQLite"]) |
+| `use_cases` | string[] | 20 items | When to use this tool |
+| `language` | string | 30 | Primary programming language |
+| `stars` | int | - | GitHub stars count |
+| `cli_name` | string | 30 | CLI command name (e.g., "am") |
+| `cli_aliases` | string[] | 10 items | Alternate CLI names |
+| `command_example` | string | 200 | Example usage (e.g., "am --help") |
+| `lesson_slug` | string | 100 | Lesson page slug (e.g., "agent-mail") |
+| `tldr_snippet` | string | 500 | Quick summary for TL;DR page |
+| `visible` | bool | true | Set false to hide from web |
+
+**Security Constraints:**
+- `icon` must be lowercase kebab-case (Lucide icons)
+- `color` must be 6-digit hex to prevent CSS injection
+- `href` must be absolute path (`/...`) or full URL (`https://...`)
+- `cli_name` must be lowercase alphanumeric with hyphens/underscores
+
 ## Examples
 
 ### Standard Module (apt packages)
@@ -185,6 +217,60 @@ installed_check:
   verify:
     - id ubuntu
     - sudo -n true
+```
+
+### Module with Web Metadata
+
+```yaml
+- id: stack.mcp_agent_mail
+  description: MCP-based agent coordination via mail-like messaging
+  category: stack
+  phase: 9
+  run_as: target_user
+  optional: false
+  enabled_by_default: true
+  tags: [stack, recommended, agent-infra]
+  dependencies:
+    - lang.uv
+    - stack.ntm
+  verified_installer:
+    tool: mcp_agent_mail
+    runner: bash
+    args: []
+  installed_check:
+    run_as: target_user
+    command: "command -v am"
+  install: []
+  verify:
+    - am --version
+  docs_url: https://github.com/Dicklesworthstone/mcp_agent_mail
+  web:
+    display_name: "MCP Agent Mail"
+    short_name: "MAM"
+    tagline: "Agent-to-agent coordination via mail-like messaging"
+    short_desc: "MCP-based messaging system for multi-agent coordination with file reservations, inboxes, and thread management."
+    icon: "mail"
+    color: "#8B5CF6"
+    category_label: "Stack Tools"
+    href: "/learn/tools/agent-mail"
+    features:
+      - "Agent identity registration"
+      - "Threaded messaging with inboxes"
+      - "Advisory file reservations"
+      - "Git-backed persistence"
+    tech_stack: ["Python", "SQLite", "MCP"]
+    use_cases:
+      - "Multi-agent coordination on shared codebases"
+      - "Preventing agent edit conflicts"
+      - "Asynchronous agent communication"
+    language: "Python"
+    stars: 450
+    cli_name: "am"
+    cli_aliases: []
+    command_example: "am send BlueLake 'Review PR #42'"
+    lesson_slug: "agent-mail"
+    tldr_snippet: "Agent Mail provides messaging and file reservation for multi-agent workflows."
+    visible: true
 ```
 
 ### Optional Cloud Tool (Legacy Pattern)
@@ -285,6 +371,59 @@ Generated functions must not shadow orchestrator functions.
 which is a reserved orchestrator name
   → Rename the module to avoid the reserved function name
 ```
+
+## Web Content Generation
+
+The manifest generates TypeScript data files for the Next.js website. This keeps website content in sync with what gets installed.
+
+### Generated Files
+
+| File | Purpose |
+|------|---------|
+| `apps/web/lib/generated/manifest-tools.ts` | Tool cards for flywheel page and learn section |
+| `apps/web/lib/generated/manifest-tldr.ts` | TL;DR page tool summaries |
+| `apps/web/lib/generated/manifest-commands.ts` | CLI command reference |
+| `apps/web/lib/generated/manifest-lessons-index.ts` | Lesson navigation index |
+| `apps/web/lib/generated/manifest-web-index.ts` | Re-exports all generated modules |
+
+**IMPORTANT:** Never edit files in `apps/web/lib/generated/`. They are overwritten on every generation.
+
+### Web Generation Workflow
+
+1. **Add web metadata** to the module's `web` block in `acfs.manifest.yaml`
+2. **Regenerate**: `cd packages/manifest && bun run generate`
+3. **Verify no drift**: `bun run generate:diff` (should exit 0)
+4. **Build website** to verify: `cd apps/web && bun run build`
+5. **Commit** both `acfs.manifest.yaml` and `apps/web/lib/generated/*`
+
+### Migration Checklist (Adding New Tool to Website)
+
+```bash
+# 1. Edit manifest - add web block to module
+vim acfs.manifest.yaml
+
+# 2. Regenerate web data
+cd packages/manifest && bun run generate
+
+# 3. Verify generated files are in sync
+bun run generate:diff
+
+# 4. Type-check and build website
+cd apps/web
+bun run type-check
+bun run build
+
+# 5. Commit everything together
+git add acfs.manifest.yaml apps/web/lib/generated/
+git commit -m "feat(manifest): add web metadata for <tool-name>"
+```
+
+### CI Integration
+
+The GitHub Actions workflows (`playwright.yml`, `website.yml`) include a `verify-generated` job that runs `bun run generate:diff` before building. This ensures:
+- Generated files match the manifest
+- No manual edits to generated files sneak through
+- Website builds use current manifest data
 
 ## Maintainer Workflows
 
