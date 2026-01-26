@@ -128,20 +128,20 @@ Agents read this file and follow its instructions!
 
 ## Beads Integration
 
-Projects created with `acfs newproj` include beads (bd) for issue tracking:
+Projects created with `acfs newproj` include beads (br) for issue tracking:
 
 ```bash
 # Create an issue
-bd add "Set up authentication"
+br create "Set up authentication"
 
 # List issues
-bd list
+br list
 
-# See the graph
-bd graph
+# See ready work (unblocked issues)
+br ready
 ```
 
-This integrates with `bv` (Beads Viewer) for visualization.
+This integrates with `bv` (Beads Viewer) for visualization and graph analysis.
 
 ---
 
