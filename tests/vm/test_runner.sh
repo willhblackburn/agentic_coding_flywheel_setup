@@ -89,6 +89,36 @@ if [[ $failed_checks -gt 0 ]]; then
     fail "Verification phase failed"
 fi
 
+# PHASE 2.5: Install Artifacts (bd-31ps.3.3)
+log "PHASE 2.5: Install Artifacts Validation"
+ARTIFACTS_LOG="${ARTIFACTS_DIR}/artifacts_test.log"
+if bash /repo/tests/vm/test_install_artifacts.sh --user ubuntu --home /home/ubuntu > "$ARTIFACTS_LOG" 2>&1; then
+    log "Install artifacts validation passed"
+    # Copy any test logs for debugging
+    cp /tmp/acfs_install_artifacts_test_*.log "$ARTIFACTS_DIR/" 2>/dev/null || true
+else
+    log "Install artifacts validation failed! See $ARTIFACTS_LOG"
+    cat "$ARTIFACTS_LOG"
+    # Copy test logs for debugging
+    cp /tmp/acfs_install_artifacts_test_*.log "$ARTIFACTS_DIR/" 2>/dev/null || true
+    fail "Install artifacts validation failed"
+fi
+
+# PHASE 2.6: git_safety_guard Removal Verification (bd-33vh.8)
+log "PHASE 2.6: git_safety_guard Removal Verification"
+GUARD_REMOVAL_LOG="${ARTIFACTS_DIR}/git_safety_guard_removal.log"
+if bash /repo/tests/e2e/test_git_safety_guard_removal.sh --user ubuntu --home /home/ubuntu > "$GUARD_REMOVAL_LOG" 2>&1; then
+    log "git_safety_guard removal verification passed"
+    cp /tmp/git_safety_guard_removal_*.log "$ARTIFACTS_DIR/" 2>/dev/null || true
+    cp /tmp/git_safety_guard_removal_*.json "$ARTIFACTS_DIR/" 2>/dev/null || true
+else
+    log "git_safety_guard removal verification failed! See $GUARD_REMOVAL_LOG"
+    cat "$GUARD_REMOVAL_LOG"
+    cp /tmp/git_safety_guard_removal_*.log "$ARTIFACTS_DIR/" 2>/dev/null || true
+    cp /tmp/git_safety_guard_removal_*.json "$ARTIFACTS_DIR/" 2>/dev/null || true
+    fail "git_safety_guard removal verification failed"
+fi
+
 # PHASE 3: Idempotency
 log "PHASE 3: Idempotency Check"
 if bash install.sh --yes --mode "${ACFS_TEST_MODE}" ${STRICT_FLAG} > "${ARTIFACTS_DIR}/idempotency.log" 2>&1; then

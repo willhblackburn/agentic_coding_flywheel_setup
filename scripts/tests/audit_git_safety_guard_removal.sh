@@ -16,8 +16,12 @@ FOUND=0
 
 # Check 1: Literal string matches
 echo "[1/5] Checking for 'git_safety_guard' literal string..."
-# Note: update.sh is excluded because it contains intentional migration cleanup code
-if grep -rn 'git_safety_guard' --include='*.sh' --include='*.py' --include='*.ts' --include='*.tsx' --include='*.md' --include='*.yaml' --include='*.json' . 2>/dev/null | grep -v '.beads/' | grep -v 'audit_git_safety_guard' | grep -v 'scripts/lib/update.sh'; then
+# Exclusions:
+#   - update.sh: intentional migration cleanup code
+#   - CHANGELOG.md: historical documentation
+#   - test_git_safety_guard_removal.sh: E2E test script
+#   - audit_git_safety_guard: this audit script
+if grep -rn 'git_safety_guard' --include='*.sh' --include='*.py' --include='*.ts' --include='*.tsx' --include='*.md' --include='*.yaml' --include='*.json' . 2>/dev/null | grep -v '.beads/' | grep -v 'audit_git_safety_guard' | grep -v 'test_git_safety_guard_removal' | grep -v 'scripts/lib/update.sh' | grep -v 'CHANGELOG.md'; then
     echo "❌ FOUND: git_safety_guard references"
     FOUND=1
 else
@@ -27,7 +31,8 @@ fi
 # Check 2: 'Git Safety Guard' (display name)
 echo ""
 echo "[2/5] Checking for 'Git Safety Guard' display name..."
-if grep -rni 'Git Safety Guard' --include='*.sh' --include='*.py' --include='*.ts' --include='*.tsx' --include='*.md' . 2>/dev/null | grep -v '.beads/' | grep -v 'audit_git_safety_guard'; then
+# Same exclusions as check 1
+if grep -rni 'Git Safety Guard' --include='*.sh' --include='*.py' --include='*.ts' --include='*.tsx' --include='*.md' . 2>/dev/null | grep -v '.beads/' | grep -v 'audit_git_safety_guard' | grep -v 'test_git_safety_guard_removal' | grep -v 'CHANGELOG.md'; then
     echo "❌ FOUND: Git Safety Guard references"
     FOUND=1
 else
