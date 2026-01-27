@@ -145,9 +145,9 @@ append_atomic() {
 
     # Copy existing content + new line to temp
     if [[ -f "$target_file" ]]; then
-        cat "$target_file" > "$temp_file"
+        cat "$target_file" > "$temp_file" || { rm -f "$temp_file"; return 1; }
     fi
-    printf '%s\n' "$content" >> "$temp_file"
+    printf '%s\n' "$content" >> "$temp_file" || { rm -f "$temp_file"; return 1; }
 
     # Sync and rename
     fsync_file "$temp_file"
@@ -339,10 +339,10 @@ update_integrity_file() {
 
 # Initialize state directory
 init_autofix_state() {
-    mkdir -p "$ACFS_STATE_DIR"
-    mkdir -p "$ACFS_BACKUPS_DIR"
-    touch "$ACFS_CHANGES_FILE"
-    touch "$ACFS_UNDOS_FILE"
+    mkdir -p "$ACFS_STATE_DIR" || { log_error "Failed to create state directory: $ACFS_STATE_DIR"; return 1; }
+    mkdir -p "$ACFS_BACKUPS_DIR" || { log_error "Failed to create backups directory: $ACFS_BACKUPS_DIR"; return 1; }
+    touch "$ACFS_CHANGES_FILE" || { log_error "Failed to create changes file: $ACFS_CHANGES_FILE"; return 1; }
+    touch "$ACFS_UNDOS_FILE" || { log_error "Failed to create undos file: $ACFS_UNDOS_FILE"; return 1; }
 
     # Verify integrity on startup
     if ! verify_state_integrity; then
@@ -562,7 +562,7 @@ undo_change() {
     # Load from file if not in memory
     if [[ -z "${ACFS_CHANGE_RECORDS[$change_id]:-}" ]]; then
         local record
-        record=$(grep "\"id\":\"$change_id\"" "$ACFS_CHANGES_FILE" | tail -1)
+        record=$(grep -F "\"id\":\"$change_id\"" "$ACFS_CHANGES_FILE" | tail -1)
         if [[ -z "$record" ]]; then
             log_error "Unknown change ID: $change_id"
             return 1
@@ -824,7 +824,7 @@ acfs_undo_command() {
         echo "Dry run: Would undo the following changes:"
         for change_id in "${change_ids[@]}"; do
             local record
-            record=$(grep "\"id\":\"$change_id\"" "$ACFS_CHANGES_FILE" | tail -1)
+            record=$(grep -F "\"id\":\"$change_id\"" "$ACFS_CHANGES_FILE" | tail -1)
             local desc
             desc=$(echo "$record" | jq -r '.description')
             local undo
