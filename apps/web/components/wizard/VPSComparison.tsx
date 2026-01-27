@@ -11,7 +11,7 @@
  */
 
 import { useState } from "react";
-import { ExternalLink, Star, Clock, ChevronDown } from "lucide-react";
+import { ExternalLink, Star, Clock } from "lucide-react";
 import { TrackedLink } from "@/components/tracked-link";
 import { cn } from "@/lib/utils";
 import {
