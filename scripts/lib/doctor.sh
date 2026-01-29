@@ -45,6 +45,16 @@ fi
 # Source gum_ui library if available
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Source output formatting library (for TOON support)
+if [[ -f "$SCRIPT_DIR/output.sh" ]]; then
+    # shellcheck source=output.sh
+    source "$SCRIPT_DIR/output.sh"
+fi
+
+# Global format options (set by argument parsing)
+_DOCTOR_OUTPUT_FORMAT=""
+_DOCTOR_SHOW_STATS=false
+
 # Source doctor_fix library for --fix functionality
 if [[ -f "$SCRIPT_DIR/doctor_fix.sh" ]]; then
     # shellcheck source=doctor_fix.sh
@@ -2149,7 +2159,8 @@ print_json() {
   \"deep_summary\": {\"pass\": $DEEP_PASS_COUNT, \"warn\": $DEEP_WARN_COUNT, \"fail\": $DEEP_FAIL_COUNT, \"total\": $deep_total, \"elapsed_seconds\": ${DEEP_CHECK_ELAPSED:-0}}"
     fi
 
-    cat << EOF
+    local json_output
+    json_output=$(cat << EOF
 {
   "acfs_version": "$(json_escape "$ACFS_VERSION")",
   "timestamp": "$(json_escape "$(date -Iseconds)")",
@@ -2161,6 +2172,17 @@ print_json() {
   "summary": {"pass": $PASS_COUNT, "skip": $SKIP_COUNT, "warn": $WARN_COUNT, "fail": $FAIL_COUNT}$deep_summary_json
 }
 EOF
+)
+
+    # Use output formatting library if available
+    if type -t acfs_format_output &>/dev/null; then
+        local resolved_format
+        resolved_format=$(acfs_resolve_format "$_DOCTOR_OUTPUT_FORMAT")
+        acfs_format_output "$json_output" "$resolved_format" "$_DOCTOR_SHOW_STATS"
+    else
+        # Fallback: direct JSON output
+        printf '%s\n' "$json_output"
+    fi
 }
 
 # Main
@@ -2343,6 +2365,26 @@ main() {
                 JSON_MODE=true
                 shift
                 ;;
+            --format|-f)
+                shift
+                _DOCTOR_OUTPUT_FORMAT="$1"
+                JSON_MODE=true
+                shift
+                ;;
+            --format=*)
+                _DOCTOR_OUTPUT_FORMAT="${1#*=}"
+                JSON_MODE=true
+                shift
+                ;;
+            --toon|-t)
+                _DOCTOR_OUTPUT_FORMAT="toon"
+                JSON_MODE=true
+                shift
+                ;;
+            --stats)
+                _DOCTOR_SHOW_STATS=true
+                shift
+                ;;
             --deep)
                 DEEP_MODE=true
                 shift
@@ -2360,10 +2402,13 @@ main() {
                 shift
                 ;;
             --help|-h)
-                echo "Usage: acfs doctor [--json] [--deep] [--no-cache] [--fix] [--dry-run]"
+                echo "Usage: acfs doctor [--json] [--format <fmt>] [--stats] [--deep] [--no-cache] [--fix] [--dry-run]"
                 echo ""
                 echo "Options:"
-                echo "  --json      Output results as JSON"
+                echo "  --json           Output results as JSON"
+                echo "  --format <fmt>   Output format: json or toon (env: ACFS_OUTPUT_FORMAT, TOON_DEFAULT_FORMAT)"
+                echo "  --toon, -t       Shorthand for --format toon"
+                echo "  --stats          Show token savings statistics (JSON vs TOON bytes)"
                 echo "  --deep      Run functional tests (auth, connections)"
                 echo "  --no-cache  Skip cache, run all checks fresh"
                 echo "  --fix       Automatically apply safe fixes for failed checks"

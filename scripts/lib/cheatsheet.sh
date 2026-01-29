@@ -12,6 +12,16 @@ CHEATSHEET_DELIM=$'\t'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Source output formatting library (for TOON support)
+if [[ -f "$SCRIPT_DIR/output.sh" ]]; then
+    # shellcheck source=output.sh
+    source "$SCRIPT_DIR/output.sh"
+fi
+
+# Global format options (set by argument parsing)
+_CHEATSHEET_OUTPUT_FORMAT=""
+_CHEATSHEET_SHOW_STATS=false
+
 if [[ -f "$SCRIPT_DIR/../../VERSION" ]]; then
   ACFS_VERSION="$(cat "$SCRIPT_DIR/../../VERSION" 2>/dev/null || echo "$ACFS_VERSION")"
 elif [[ -f "$ACFS_HOME/VERSION" ]]; then
@@ -30,7 +40,15 @@ Usage:
   acfs cheatsheet --category <name>
   acfs cheatsheet --search <pattern>
   acfs cheatsheet --json
+  acfs cheatsheet --format <json|toon>
+  acfs cheatsheet --stats
   acfs cheatsheet --zshrc <path>
+
+Options:
+  --json           Output as JSON
+  --format <fmt>   Output format: json or toon (env: ACFS_OUTPUT_FORMAT, TOON_DEFAULT_FORMAT)
+  --toon, -t       Shorthand for --format toon
+  --stats          Show token savings statistics (JSON vs TOON bytes)
 
 Examples:
   acfs cheatsheet
@@ -38,6 +56,7 @@ Examples:
   acfs cheatsheet "push"
   acfs cheatsheet --category Agents
   acfs cheatsheet --search docker
+  acfs cheatsheet --format toon --stats
 EOF
 }
 
@@ -344,30 +363,43 @@ cheatsheet_render_json() {
   local search_filter="${2:-}"
   local zshrc="${3:-$ACFS_HOME/zsh/acfs.zshrc}"
 
-  local first=true
-  printf '{'
-  printf '"version":"%s",' "$(json_escape "$ACFS_VERSION")"
-  printf '"source":"%s",' "$(json_escape "$zshrc")"
-  printf '"entries":['
-
-  local cat name cmd kind line
-  while IFS= read -r line; do
-    IFS="$CHEATSHEET_DELIM" read -r cat name cmd kind <<<"$line"
-    if [[ "$first" == "true" ]]; then
-      first=false
-    else
-      printf ','
-    fi
+  local json_output
+  json_output=$(
+    local first=true
     printf '{'
-    printf '"category":"%s",' "$(json_escape "$cat")"
-    printf '"name":"%s",' "$(json_escape "$name")"
-    printf '"command":"%s",' "$(json_escape "$cmd")"
-    printf '"kind":"%s"' "$(json_escape "$kind")"
-    printf '}'
-  done < <(cheatsheet_filter_entries "$category_filter" "$search_filter" "$zshrc")
+    printf '"version":"%s",' "$(json_escape "$ACFS_VERSION")"
+    printf '"source":"%s",' "$(json_escape "$zshrc")"
+    printf '"entries":['
 
-  printf ']'
-  printf '}\n'
+    local cat name cmd kind line
+    while IFS= read -r line; do
+      IFS="$CHEATSHEET_DELIM" read -r cat name cmd kind <<<"$line"
+      if [[ "$first" == "true" ]]; then
+        first=false
+      else
+        printf ','
+      fi
+      printf '{'
+      printf '"category":"%s",' "$(json_escape "$cat")"
+      printf '"name":"%s",' "$(json_escape "$name")"
+      printf '"command":"%s",' "$(json_escape "$cmd")"
+      printf '"kind":"%s"' "$(json_escape "$kind")"
+      printf '}'
+    done < <(cheatsheet_filter_entries "$category_filter" "$search_filter" "$zshrc")
+
+    printf ']'
+    printf '}'
+  )
+
+  # Use output formatting library if available
+  if type -t acfs_format_output &>/dev/null; then
+    local resolved_format
+    resolved_format=$(acfs_resolve_format "$_CHEATSHEET_OUTPUT_FORMAT")
+    acfs_format_output "$json_output" "$resolved_format" "$_CHEATSHEET_SHOW_STATS"
+  else
+    # Fallback: direct JSON output
+    printf '%s\n' "$json_output"
+  fi
 }
 
 main() {
@@ -384,6 +416,25 @@ main() {
         ;;
       --json)
         json_mode=true
+        shift
+        ;;
+      --format|-f)
+        _CHEATSHEET_OUTPUT_FORMAT="$2"
+        json_mode=true
+        shift 2
+        ;;
+      --format=*)
+        _CHEATSHEET_OUTPUT_FORMAT="${1#*=}"
+        json_mode=true
+        shift
+        ;;
+      --toon|-t)
+        _CHEATSHEET_OUTPUT_FORMAT="toon"
+        json_mode=true
+        shift
+        ;;
+      --stats)
+        _CHEATSHEET_SHOW_STATS=true
         shift
         ;;
       --category)
