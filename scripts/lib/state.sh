@@ -661,6 +661,32 @@ confirm_resume() {
         return 0
     fi
 
+    # Version mismatch detection: if the running script's version differs from
+    # the state file's version, force the finalize phase to re-run so that
+    # all scripts from the new version get deployed. This prevents stale
+    # install.sh copies from producing incomplete installations.
+    local state_version=""
+    if command -v jq &>/dev/null; then
+        state_version=$(echo "$state" | jq -r '.version // "unknown"')
+    fi
+    if [[ -n "${ACFS_VERSION:-}" && -n "$state_version" && "$state_version" != "unknown" ]]; then
+        if [[ "$ACFS_VERSION" != "$state_version" ]]; then
+            _confirm_resume_log_warn "Version mismatch: state=$state_version, running=$ACFS_VERSION"
+            _confirm_resume_log_info "Marking finalize phase for re-run to deploy updated scripts"
+            # Remove finalize from completed_phases so it re-runs with the new version's file list
+            if command -v jq &>/dev/null; then
+                local updated_state
+                updated_state=$(echo "$state" | jq --arg ver "$ACFS_VERSION" '
+                    .completed_phases = (.completed_phases | map(select(. != "finalize"))) |
+                    .version = $ver
+                ')
+                local state_file_path
+                state_file_path="$(state_get_file)"
+                printf '%s\n' "$updated_state" > "$state_file_path"
+            fi
+        fi
+    fi
+
     # Default behavior: silent resume with status
     # Show clear status so user knows what's happening
     echo "" >&2

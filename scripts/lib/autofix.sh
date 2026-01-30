@@ -41,7 +41,7 @@ _autofix_log() {
         ERROR) echo "[$timestamp] ERROR: $message" >&2 ;;
         WARN)  echo "[$timestamp] WARN:  $message" >&2 ;;
         INFO)  echo "[$timestamp] INFO:  $message" >&2 ;;
-        DEBUG) [[ "${ACFS_DEBUG:-}" == "true" ]] && echo "[$timestamp] DEBUG: $message" ;;
+        DEBUG) [[ "${ACFS_DEBUG:-}" == "true" ]] && echo "[$timestamp] DEBUG: $message" || true ;;
     esac
 }
 
@@ -502,6 +502,11 @@ record_change() {
     local files_json="${6:-[]}"  # JSON array of affected files
     local backups_json="${7:-[]}"  # JSON array from create_backup
     local depends_on="${8:-[]}"  # JSON array of dependency change IDs
+
+    # Ensure state is initialized
+    if [[ "$ACFS_AUTOFIX_INITIALIZED" != "true" ]]; then
+        init_autofix_state || return 1
+    fi
 
     # Generate unique ID
     local seq_num=0

@@ -870,10 +870,12 @@ cleanup() {
         fi
         log_error ""
         log_error "To debug:"
-        if [[ -n "${ACFS_LOG_FILE:-}" ]]; then
+        if [[ -n "${ACFS_LOG_FILE:-}" ]] && [[ -f "${ACFS_LOG_FILE}" ]]; then
             log_error "  1. Check the log: cat $ACFS_LOG_FILE"
-        else
+        elif [[ -n "${ACFS_LOG_DIR:-}" ]] && [[ -d "$ACFS_LOG_DIR" ]]; then
             log_error "  1. Check the log: cat $ACFS_LOG_DIR/install.log"
+        else
+            log_error "  1. Re-run with ACFS_DEBUG=true for detailed output"
         fi
         log_error "  2. If installed, run: acfs doctor (try as $TARGET_USER)"
         log_error "     (If you ran the installer as root: sudo -u $TARGET_USER -i bash -lc 'acfs doctor')"
@@ -1498,14 +1500,26 @@ handle_autofix() {
             log_info "[AUTO-FIX] Fixing: $description"
             if type "$fix_func" &>/dev/null; then
                 "$fix_func" fix
+            else
+                log_warn "[AUTO-FIX] Fix function not available: $fix_func"
             fi
             ;;
         "prompt")
             log_warn "[PRE-FLIGHT] $description"
-            if confirm "Would you like ACFS to fix this automatically?"; then
+            # In --yes mode or non-TTY (curl|bash), auto-accept the fix
+            if [[ "${YES_MODE:-false}" == "true" ]] || [[ ! -t 0 ]]; then
+                log_info "[AUTO-FIX] Fixing (non-interactive): $description"
+                if type "$fix_func" &>/dev/null; then
+                    "$fix_func" fix
+                else
+                    log_warn "[AUTO-FIX] Fix function not available: $fix_func"
+                fi
+            elif confirm "Would you like ACFS to fix this automatically?"; then
                 log_info "[AUTO-FIX] Fixing: $description"
                 if type "$fix_func" &>/dev/null; then
                     "$fix_func" fix
+                else
+                    log_warn "[AUTO-FIX] Fix function not available: $fix_func"
                 fi
             else
                 log_warn "[PRE-FLIGHT] Skipped auto-fix for: $description"
@@ -1531,12 +1545,18 @@ run_autofix_checks() {
     log_info "Running auto-fix pre-flight checks..."
 
     # Check for existing ACFS installation
-    if type autofix_existing_acfs_needs_handling &>/dev/null; then
-        if autofix_existing_acfs_needs_handling 2>/dev/null; then
-            local version
-            version=$(get_installed_version 2>/dev/null || echo "unknown")
-            handle_autofix "existing" "Existing ACFS installation detected (version: $version)"
+    # Skip this check when --only or --only-phase is specified, since the user
+    # is targeting a specific module on an already-installed system
+    if [[ ${#ONLY_MODULES[@]} -eq 0 ]] && [[ ${#ONLY_PHASES[@]} -eq 0 ]]; then
+        if type autofix_existing_acfs_needs_handling &>/dev/null; then
+            if autofix_existing_acfs_needs_handling 2>/dev/null; then
+                local version
+                version=$(get_installed_version 2>/dev/null || echo "unknown")
+                handle_autofix "existing" "Existing ACFS installation detected (version: $version)"
+            fi
         fi
+    else
+        log_debug "Skipping existing-installation check (--only/--only-phase mode)"
     fi
 
     # Check for unattended-upgrades issues

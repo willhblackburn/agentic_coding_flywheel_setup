@@ -92,8 +92,8 @@ check_directory_status() {
                 echo "WARNING:Directory exists but is empty (will be used)"
                 return 1
             else
-                echo "ERROR:Directory already exists and is not empty"
-                return 2
+                echo "WARNING:Directory already exists and is not empty (will add ACFS tooling)"
+                return 1
             fi
         else
             echo "ERROR:Path exists but is not a directory"
