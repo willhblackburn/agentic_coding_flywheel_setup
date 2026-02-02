@@ -60,7 +60,7 @@ if ! declare -f acfs_log_init >/dev/null 2>&1; then
                 # shellcheck disable=SC2261
                 # Use set +e locally to prevent exec from exiting under bash 5.3+
                 if (set +e; exec 2> >(tee -a "$ACFS_LOG_FILE" >&3)) 2>/dev/null; then
-                    exec 2> >(tee -a "$ACFS_LOG_FILE" >&3) 2>/dev/null && tee_logging_ok=true
+                    exec 2> >(tee -a "$ACFS_LOG_FILE" >&3) && tee_logging_ok=true
                 fi
             fi
         fi
