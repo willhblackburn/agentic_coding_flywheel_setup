@@ -190,7 +190,7 @@ export function TldrSynergyDiagram({
               x="200"
               y="210"
               textAnchor="middle"
-              className="fill-muted-foreground text-[9px]"
+              className="fill-muted-foreground text-xs"
             >
               {coreTools.length} Core Tools
             </text>

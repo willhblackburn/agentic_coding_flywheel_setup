@@ -267,9 +267,9 @@ export default function LearnDashboard() {
 
           <div className="flex items-center gap-3 sm:gap-4">
             <span className="hidden text-xs text-muted-foreground/60 lg:block">
-              <kbd className="rounded border border-white/10 bg-white/[0.04] px-1.5 py-0.5 font-mono text-[10px]">j</kbd>
+              <kbd className="rounded border border-white/10 bg-white/[0.04] px-1.5 py-0.5 font-mono text-xs">j</kbd>
               /
-              <kbd className="rounded border border-white/10 bg-white/[0.04] px-1.5 py-0.5 font-mono text-[10px]">k</kbd>
+              <kbd className="rounded border border-white/10 bg-white/[0.04] px-1.5 py-0.5 font-mono text-xs">k</kbd>
               {" "}to navigate
             </span>
             <Link

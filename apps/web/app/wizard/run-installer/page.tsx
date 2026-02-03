@@ -253,7 +253,7 @@ export default function RunInstallerPage() {
             <TrackedLink
               href="https://github.com/Dicklesworthstone/agentic_coding_flywheel_setup/blob/main/install.sh"
               trackingId="install-sh-source"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-[oklch(0.75_0.18_195/0.3)] bg-[oklch(0.75_0.18_195/0.1)] px-2.5 py-1.5 text-[11px] font-medium text-[oklch(0.75_0.18_195)] transition-colors hover:bg-[oklch(0.75_0.18_195/0.2)] sm:text-xs"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[oklch(0.75_0.18_195/0.3)] bg-[oklch(0.75_0.18_195/0.1)] px-2.5 py-1.5 text-xs font-medium text-[oklch(0.75_0.18_195)] transition-colors hover:bg-[oklch(0.75_0.18_195/0.2)]"
             >
               <Code className="h-3 w-3" />
               View install.sh source
@@ -262,7 +262,7 @@ export default function RunInstallerPage() {
             <TrackedLink
               href="https://github.com/Dicklesworthstone/agentic_coding_flywheel_setup"
               trackingId="github-repo"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border/50 bg-card/50 px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground sm:text-xs"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border/50 bg-card/50 px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
             >
               Full repository
               <ExternalLink className="h-2.5 w-2.5" />

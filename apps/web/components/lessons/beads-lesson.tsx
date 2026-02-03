@@ -213,7 +213,7 @@ export function BeadsLesson() {
               <PriorityRow priority="1" label="High" description="Important work" color="text-amber-400" />
               <PriorityRow priority="2" label="Medium" description="Default priority" color="text-primary" />
               <PriorityRow priority="3" label="Low" description="Nice to have" color="text-white/60" />
-              <PriorityRow priority="4" label="Backlog" description="Future consideration" color="text-white/40" />
+              <PriorityRow priority="4" label="Backlog" description="Future consideration" color="text-white/60" />
             </div>
           </div>
         </div>
@@ -383,8 +383,8 @@ function PriorityRow({
     >
       <span className={`text-sm font-mono font-bold w-6 text-center ${color}`}>{priority}</span>
       <span className={`text-sm font-medium ${color}`}>{label}</span>
-      <span className="text-xs text-white/40">—</span>
-      <span className="text-xs text-white/40 group-hover:text-white/60 transition-colors">{description}</span>
+      <span className="text-xs text-white/50">—</span>
+      <span className="text-xs text-white/60 group-hover:text-white/80 transition-colors">{description}</span>
     </motion.div>
   );
 }

@@ -183,7 +183,7 @@ function LessonSidebar({
                 </div>
 
                 <div className="flex items-center justify-between mt-4 text-xs">
-                  <span className="text-white/40">{completedLessons.length} of {LESSONS.length}</span>
+                  <span className="text-white/60">{completedLessons.length} of {LESSONS.length}</span>
                   <span className="text-emerald-400/80">{LESSONS.length - completedLessons.length} remaining</span>
                 </div>
               </div>
@@ -227,7 +227,7 @@ function LessonSidebar({
                               ? "bg-gradient-to-br from-emerald-400 to-emerald-600 border-emerald-400/50 text-white shadow-[0_0_20px_rgba(16,185,129,0.5)]"
                               : isCurrent
                                 ? "bg-gradient-to-br from-primary to-violet-500 border-primary/50 text-white shadow-[0_0_20px_rgba(var(--primary-rgb),0.5)]"
-                                : "bg-white/[0.05] border-white/10 text-white/40 group-hover:border-white/30 group-hover:bg-white/[0.08] group-hover:text-white/70"
+                                : "bg-white/[0.05] border-white/10 text-white/60 group-hover:border-white/30 group-hover:bg-white/[0.08] group-hover:text-white/80"
                           }`}
                         >
                           {isCompleted ? (
@@ -273,7 +273,7 @@ function LessonSidebar({
           <div className="p-6 border-t border-white/[0.05]">
             <Link
               href="/"
-              className="group flex items-center gap-4 text-sm text-white/40 transition-all duration-500 hover:text-white/80"
+              className="group flex items-center gap-4 text-sm text-white/60 transition-all duration-500 hover:text-white/90"
             >
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/[0.03] border border-white/[0.08] transition-all duration-500 group-hover:scale-110 group-hover:bg-white/[0.08] group-hover:border-white/20">
                 <Home className="h-5 w-5 transition-transform duration-500 group-hover:-translate-y-0.5" />
@@ -453,8 +453,8 @@ export function LessonContent({ lesson }: Props) {
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/[0.05] border border-white/[0.08]">
                     <span className="text-sm font-bold text-primary tabular-nums">{lesson.id + 1}</span>
-                    <span className="text-white/30">/</span>
-                    <span className="text-sm text-white/40 tabular-nums">{LESSONS.length}</span>
+                    <span className="text-white/50">/</span>
+                    <span className="text-sm text-white/60 tabular-nums">{LESSONS.length}</span>
                   </div>
                 </div>
               </div>
@@ -658,7 +658,7 @@ export function LessonContent({ lesson }: Props) {
                         <ChevronLeft className="h-6 w-6 text-white/60 transition-all duration-500 group-hover:text-white group-hover:-translate-x-1" />
                       </div>
                       <div>
-                        <div className="text-xs text-white/30 mb-1 uppercase tracking-wider font-medium">Previous</div>
+                        <div className="text-xs text-white/50 mb-1 uppercase tracking-wider font-medium">Previous</div>
                         <div className="text-lg font-semibold text-white/80 transition-colors group-hover:text-white">{prevLesson.title}</div>
                       </div>
                     </div>
@@ -674,7 +674,7 @@ export function LessonContent({ lesson }: Props) {
                     <div className="absolute inset-0 bg-gradient-to-l from-white/[0.05] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                     <div className="relative flex items-center justify-end gap-5">
                       <div>
-                        <div className="text-xs text-white/30 mb-1 uppercase tracking-wider font-medium">Next</div>
+                        <div className="text-xs text-white/50 mb-1 uppercase tracking-wider font-medium">Next</div>
                         <div className="text-lg font-semibold text-white/80 transition-colors group-hover:text-white">{nextLesson.title}</div>
                       </div>
                       <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/[0.05] border border-white/[0.08] transition-all duration-500 group-hover:scale-110 group-hover:bg-white/[0.1] group-hover:border-white/20">

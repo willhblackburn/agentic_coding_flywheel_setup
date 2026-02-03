@@ -182,7 +182,7 @@ export function AgentCardContent({ agent, isExpanded }: AgentCardContentProps) {
                           whileTap={{ scale: 0.98 }}
                         >
                           <div className="flex items-center gap-3">
-                            <Terminal className="h-4 w-4 text-white/40 group-hover/alias:text-primary transition-colors" />
+                            <Terminal className="h-4 w-4 text-white/60 group-hover/alias:text-primary transition-colors" />
                             <code className="font-mono text-base text-white/80">{alias}</code>
                           </div>
                           <AnimatePresence mode="wait">
@@ -205,7 +205,7 @@ export function AgentCardContent({ agent, isExpanded }: AgentCardContentProps) {
                                 initial={{ scale: 0 }}
                                 animate={{ scale: 1 }}
                                 exit={{ scale: 0 }}
-                                className="flex items-center gap-1 text-white/40 opacity-0 transition-opacity group-hover/alias:opacity-100"
+                                className="flex items-center gap-1 text-white/60 opacity-0 transition-opacity group-hover/alias:opacity-100"
                               >
                                 <Copy className="h-4 w-4" />
                                 <span className="hidden text-xs sm:inline">

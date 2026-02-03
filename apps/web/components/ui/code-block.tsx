@@ -59,7 +59,7 @@ function CopyButton({
         "inline-flex items-center gap-1.5 rounded-lg text-xs font-medium transition-all duration-200",
         compact
           ? "p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted"
-          : "px-2.5 py-1.5 text-white/40 hover:text-white hover:bg-white/10",
+          : "px-2.5 py-1.5 text-white/60 hover:text-white hover:bg-white/10",
         className,
       )}
     >
@@ -152,9 +152,9 @@ export function CodeBlock({
             <div className="w-3 h-3 rounded-full bg-green-500/80" />
           </div>
           {filename ? (
-            <span className="text-xs text-white/40 font-mono">{filename}</span>
+            <span className="text-xs text-white/60 font-mono">{filename}</span>
           ) : (
-            <div className="flex items-center gap-1.5 text-white/40">
+            <div className="flex items-center gap-1.5 text-white/60">
               <Terminal className="h-3.5 w-3.5" />
               <span className="text-xs font-mono">{language}</span>
             </div>
@@ -180,7 +180,7 @@ export function CodeBlock({
                     <span className="text-white/90">{line.slice(1)}</span>
                   </>
                 ) : line.startsWith("#") ? (
-                  <span className="text-white/40">{line}</span>
+                  <span className="text-white/50">{line}</span>
                 ) : (
                   line
                 )}

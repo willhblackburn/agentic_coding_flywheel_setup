@@ -519,7 +519,7 @@ function TimelineCard() {
               <span className="text-xs font-mono text-white/50 w-20">
                 {step.time}
               </span>
-              <ArrowRight className="h-3 w-3 text-white/30 group-hover:text-primary/50 transition-colors" />
+              <ArrowRight className="h-3 w-3 text-white/50 group-hover:text-primary/60 transition-colors" />
               <span className="text-sm text-white/70 group-hover:text-white/90 transition-colors">{step.event}</span>
             </div>
           </motion.div>

@@ -106,7 +106,7 @@ function CollapsibleSection({
             <div className="flex items-center gap-2">
               <span className="text-lg font-semibold tracking-tight">{title}</span>
               {badge && (
-                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary/20 text-primary">
+                <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary/20 text-primary">
                   {badge}
                 </span>
               )}

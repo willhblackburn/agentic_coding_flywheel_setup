@@ -287,10 +287,10 @@ export default function GlossaryPage() {
                       <h2 className="text-lg font-semibold text-foreground">
                         {entry.term}
                       </h2>
-                      <span className="rounded-full border border-border/60 bg-muted/30 px-2 py-0.5 text-[11px] text-muted-foreground">
+                      <span className="rounded-full border border-border/60 bg-muted/30 px-2 py-0.5 text-xs text-muted-foreground">
                         #{entry.key}
                       </span>
-                      <span className="rounded-full border border-border/60 bg-muted/30 px-2 py-0.5 text-[11px] text-muted-foreground">
+                      <span className="rounded-full border border-border/60 bg-muted/30 px-2 py-0.5 text-xs text-muted-foreground">
                         {CATEGORY_LABELS[entry.category]}
                       </span>
                     </div>

@@ -153,7 +153,7 @@ function TermCard({ term }: { term: JargonTerm }) {
             </div>
             <Link
               href={`#${anchorId}`}
-              className="text-xs text-white/30 hover:text-white/60 transition-colors font-mono shrink-0"
+              className="text-xs text-white/50 hover:text-white/70 transition-colors font-mono shrink-0"
             >
               #{anchorId}
             </Link>
@@ -356,13 +356,13 @@ export default function GlossaryPage() {
             <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-primary/30 via-emerald-500/20 to-primary/30 blur-lg opacity-0 group-focus-within:opacity-100 transition-opacity duration-500" />
 
             <div className="relative">
-              <Search className="absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-white/30 transition-colors group-focus-within:text-primary" />
+              <Search className="absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-white/50 transition-colors group-focus-within:text-primary" />
               <input
                 type="text"
                 placeholder="Search terms..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] py-4 pl-14 pr-5 text-white placeholder:text-white/30 backdrop-blur-xl transition-all duration-300 focus:border-primary/50 focus:bg-white/[0.05] focus:outline-none focus:shadow-[0_0_30px_rgba(var(--primary-rgb),0.15)]"
+                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] py-4 pl-14 pr-5 text-white placeholder:text-white/50 backdrop-blur-xl transition-all duration-300 focus:border-primary/50 focus:bg-white/[0.05] focus:outline-none focus:shadow-[0_0_30px_rgba(var(--primary-rgb),0.15)]"
               />
             </div>
           </div>
@@ -392,7 +392,7 @@ export default function GlossaryPage() {
 
         {/* Count display */}
         <motion.p
-          className="mb-10 text-center text-sm text-white/40"
+          className="mb-10 text-center text-sm text-white/60"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ ...springs.smooth, delay: 0.4 }}
@@ -443,7 +443,7 @@ export default function GlossaryPage() {
               <div className="relative inline-flex mb-6">
                 <div className="absolute inset-0 bg-white/10 rounded-2xl blur-xl" />
                 <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl bg-white/[0.05] border border-white/[0.08]">
-                  <FileQuestion className="h-10 w-10 text-white/30" />
+                  <FileQuestion className="h-10 w-10 text-white/50" />
                 </div>
               </div>
               <h3 className="mb-3 text-xl font-bold text-white">

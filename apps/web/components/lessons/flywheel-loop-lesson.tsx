@@ -415,7 +415,7 @@ function FlywheelDiagram() {
               delay: 0.1,
             }}
           />
-          <ArrowRight className="h-5 w-5 text-white/30 hidden md:block" />
+          <ArrowRight className="h-5 w-5 text-white/50 hidden md:block" />
           <FlywheelNode
             {...{
               label: "Coordinate",
@@ -425,7 +425,7 @@ function FlywheelDiagram() {
               delay: 0.2,
             }}
           />
-          <ArrowRight className="h-5 w-5 text-white/30 hidden md:block" />
+          <ArrowRight className="h-5 w-5 text-white/50 hidden md:block" />
           <FlywheelNode
             {...{
               label: "Execute",
@@ -448,7 +448,7 @@ function FlywheelDiagram() {
               delay: 0.4,
             }}
           />
-          <ArrowRight className="h-5 w-5 text-white/30 rotate-180 hidden md:block" />
+          <ArrowRight className="h-5 w-5 text-white/50 rotate-180 hidden md:block" />
           <FlywheelNode
             {...{
               label: "Scan",
@@ -550,7 +550,7 @@ function ToolCard({
             <h4 className="font-bold text-white">
               {number}. {name}
             </h4>
-            <span className="text-xs text-white/40">- {subtitle}</span>
+            <span className="text-xs text-white/60">- {subtitle}</span>
           </div>
           <code className="inline-block px-2 py-1 rounded bg-black/30 border border-white/[0.08] text-xs font-mono text-primary mb-3">
             {command}
