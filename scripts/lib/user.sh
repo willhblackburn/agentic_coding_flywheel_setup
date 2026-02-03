@@ -347,7 +347,7 @@ prompt_ssh_key() {
     echo ""
 
     # 4. Read the key (handle pipe vs tty)
-    local pubkey
+    local pubkey=""
     if [[ -t 0 ]]; then
         read -r -p "Paste your public key: " pubkey
     else
