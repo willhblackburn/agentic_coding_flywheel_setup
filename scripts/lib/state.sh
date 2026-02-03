@@ -652,27 +652,25 @@ confirm_resume() {
         return 1
     fi
 
-    # Check for completed phases
-    local completed_count
+    # Extract all resume info in a single jq call (5→1 subprocess spawns)
+    local completed_count=0 last_phase="" started_at="" failed_phase="" mode=""
     if command -v jq &>/dev/null; then
-        completed_count=$(echo "$state" | jq -r '.completed_phases | length')
-    else
-        completed_count=0
+        local extracted
+        extracted=$(echo "$state" | jq -r '
+            [
+                (.completed_phases | length | tostring),
+                (.completed_phases[-1] // "unknown"),
+                (.started_at // "unknown"),
+                (.failed_phase // ""),
+                (.mode // "unknown")
+            ] | join("\u0000")
+        ')
+        IFS=$'\0' read -r -d '' completed_count last_phase started_at failed_phase mode <<< "$extracted" || true
     fi
 
     # If no phases completed, nothing to resume
     if [[ "$completed_count" -eq 0 ]]; then
         return 1
-    fi
-
-    # Extract resume info
-    local last_phase="" started_at="" failed_phase="" mode=""
-    if command -v jq &>/dev/null; then
-        # Get the last completed phase
-        last_phase=$(echo "$state" | jq -r '.completed_phases[-1] // "unknown"')
-        started_at=$(echo "$state" | jq -r '.started_at // "unknown"')
-        failed_phase=$(echo "$state" | jq -r '.failed_phase // empty')
-        mode=$(echo "$state" | jq -r '.mode // "unknown"')
     fi
 
     local last_phase_name="${ACFS_PHASE_NAMES[$last_phase]:-$last_phase}"
@@ -1201,6 +1199,7 @@ state_upgrade_get_progress() {
 
 # Print upgrade status for user display
 # Usage: state_upgrade_print_status
+# Optimized: Single jq call extracts all fields (was 11 subprocess spawns, now 1)
 state_upgrade_print_status() {
     if ! command -v jq &>/dev/null; then
         echo "Upgrade status unavailable (jq required)"
@@ -1213,19 +1212,32 @@ state_upgrade_print_status() {
         return 0
     fi
 
-    local enabled
-    enabled=$(echo "$state" | jq -r '.ubuntu_upgrade.enabled // false')
+    # Extract all fields in a single jq call (11→1 subprocess spawns)
+    local extracted
+    extracted=$(echo "$state" | jq -r '
+        .ubuntu_upgrade as $u |
+        [
+            ($u.enabled // false | tostring),
+            ($u.original_version // ""),
+            ($u.target_version // ""),
+            ($u.current_stage // ""),
+            ($u.completed_upgrades | length | tostring),
+            ($u.upgrade_path | length | tostring),
+            ($u.completed_upgrades // [] | map("  ✓ \(.from) → \(.to)") | join("\n")),
+            ($u.current_upgrade.from // ""),
+            ($u.current_upgrade.to // ""),
+            ($u.last_error // "")
+        ] | join("\u0000")
+    ')
+
+    # Parse null-separated fields
+    local enabled original target stage completed_count total_count completed_list current_from current_to error
+    IFS=$'\0' read -r -d '' enabled original target stage completed_count total_count completed_list current_from current_to error <<< "$extracted" || true
+
     if [[ "$enabled" != "true" ]]; then
         echo "No upgrade in progress"
         return 0
     fi
-
-    local original target stage completed_count total_count
-    original=$(echo "$state" | jq -r '.ubuntu_upgrade.original_version')
-    target=$(echo "$state" | jq -r '.ubuntu_upgrade.target_version')
-    stage=$(echo "$state" | jq -r '.ubuntu_upgrade.current_stage')
-    completed_count=$(echo "$state" | jq -r '.ubuntu_upgrade.completed_upgrades | length')
-    total_count=$(echo "$state" | jq -r '.ubuntu_upgrade.upgrade_path | length')
 
     echo "=== Ubuntu Upgrade Status ==="
     echo "Original: $original → Target: $target"
@@ -1233,26 +1245,19 @@ state_upgrade_print_status() {
     echo "Stage: $stage"
 
     # Show completed upgrades
-    if [[ "$completed_count" -gt 0 ]]; then
+    if [[ "$completed_count" -gt 0 ]] && [[ -n "$completed_list" ]]; then
         echo ""
         echo "Completed upgrades:"
-        echo "$state" | jq -r '.ubuntu_upgrade.completed_upgrades[] | "  ✓ \(.from) → \(.to)"'
+        echo "$completed_list"
     fi
 
     # Show current upgrade if any
-    local current
-    current=$(echo "$state" | jq -r '.ubuntu_upgrade.current_upgrade // empty')
-    if [[ -n "$current" ]]; then
-        local from to
-        from=$(echo "$state" | jq -r '.ubuntu_upgrade.current_upgrade.from')
-        to=$(echo "$state" | jq -r '.ubuntu_upgrade.current_upgrade.to')
+    if [[ -n "$current_from" ]]; then
         echo ""
-        echo "Current upgrade: $from → $to"
+        echo "Current upgrade: $current_from → $current_to"
     fi
 
     # Show error if any
-    local error
-    error=$(echo "$state" | jq -r '.ubuntu_upgrade.last_error // empty')
     if [[ -n "$error" ]]; then
         echo ""
         echo "Last error: $error"

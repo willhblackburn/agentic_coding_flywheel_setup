@@ -3505,12 +3505,17 @@ install_cli_tools() {
         try_step "Configuring git-lfs" run_as_target git lfs install --skip-repo || true
     fi
 
-    # Install optional apt packages individually to prevent one failure from blocking others
+    # Install optional apt packages - batch install for speed (14→1 apt-get calls)
     log_detail "Installing optional apt packages"
     local optional_pkgs=(lsd eza bat fd-find btop dust neovim htop tree ncdu httpie entr mtr pv docker.io docker-compose-plugin)
-    for pkg in "${optional_pkgs[@]}"; do
-        $SUDO apt-get install -y "$pkg" >/dev/null 2>&1 || log_detail "$pkg not available (optional)"
-    done
+    # First attempt: batch install all at once (fastest path)
+    if ! $SUDO apt-get install -y "${optional_pkgs[@]}" >/dev/null 2>&1; then
+        # Fallback: some packages failed, install individually to get what we can
+        log_detail "Batch install failed, trying packages individually"
+        for pkg in "${optional_pkgs[@]}"; do
+            $SUDO apt-get install -y "$pkg" >/dev/null 2>&1 || log_detail "$pkg not available (optional)"
+        done
+    fi
 
     # Robust lazygit install (apt or binary fallback)
     if ! command_exists lazygit; then
