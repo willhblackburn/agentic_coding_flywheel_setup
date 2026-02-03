@@ -126,6 +126,7 @@
   --text-3xl: clamp(2rem, 1.75rem + 1.25vw, 3rem);
   --text-4xl: clamp(2.5rem, 2.1rem + 2vw, 4rem);
   --text-5xl: clamp(3rem, 2.5rem + 2.5vw, 5rem);
+  --text-6xl: clamp(3.5rem, 3rem + 3vw, 6rem);
 
   /* Line heights per tier (tighter for headlines) */
   --leading-xs: 1.6;
@@ -137,6 +138,7 @@
   --leading-3xl: 1.2;
   --leading-4xl: 1.1;
   --leading-5xl: 1.05;
+  --leading-6xl: 1;
 
   /* Letter spacing (looser for small, tighter for headlines) */
   --tracking-xs: 0.025em;
@@ -148,6 +150,7 @@
   --tracking-3xl: -0.025em;
   --tracking-4xl: -0.03em;
   --tracking-5xl: -0.035em;
+  --tracking-6xl: -0.04em;
 
   /* ============================================
      Spacing System - 8px Base Unit
@@ -577,6 +580,19 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+/* Display typography - for hero sections and large displays */
+.text-display-5xl {
+  font-size: var(--text-5xl);
+  letter-spacing: var(--tracking-5xl);
+  line-height: var(--leading-5xl);
+}
+
+.text-display-6xl {
+  font-size: var(--text-6xl);
+  letter-spacing: var(--tracking-6xl);
+  line-height: var(--leading-6xl);
 }
 
 /* Terminal styling */
