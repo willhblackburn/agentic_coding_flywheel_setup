@@ -18,6 +18,11 @@ interface EmptyStateProps {
   variant?: "default" | "compact" | "inline";
   /** Additional className */
   className?: string;
+  /** Optional class overrides */
+  iconContainerClassName?: string;
+  iconClassName?: string;
+  titleClassName?: string;
+  descriptionClassName?: string;
 }
 
 /**
@@ -36,6 +41,10 @@ export function EmptyState({
   action,
   variant = "default",
   className,
+  iconContainerClassName,
+  iconClassName,
+  titleClassName,
+  descriptionClassName,
 }: EmptyStateProps) {
   const prefersReducedMotion = useReducedMotion();
   const reducedMotion = prefersReducedMotion ?? false;
@@ -75,7 +84,8 @@ export function EmptyState({
           "mb-4 flex items-center justify-center rounded-2xl",
           "bg-gradient-to-br from-muted/80 to-muted/40",
           "shadow-inner",
-          iconContainerSizes[variant]
+          iconContainerSizes[variant],
+          iconContainerClassName
         )}
         initial={reducedMotion ? {} : { scale: 0.9 }}
         animate={{ scale: 1 }}
@@ -84,7 +94,8 @@ export function EmptyState({
         <Icon
           className={cn(
             "text-muted-foreground/60",
-            iconSizes[variant]
+            iconSizes[variant],
+            iconClassName
           )}
           strokeWidth={1.5}
         />
@@ -96,7 +107,8 @@ export function EmptyState({
           "font-semibold text-foreground",
           variant === "default" && "text-lg",
           variant === "compact" && "text-base",
-          variant === "inline" && "text-sm"
+          variant === "inline" && "text-sm",
+          titleClassName
         )}
         initial={reducedMotion ? {} : { opacity: 0, y: 5 }}
         animate={{ opacity: 1, y: 0 }}
@@ -111,7 +123,8 @@ export function EmptyState({
           "mt-2 max-w-sm text-muted-foreground",
           variant === "default" && "text-sm",
           variant === "compact" && "text-sm",
-          variant === "inline" && "text-xs"
+          variant === "inline" && "text-xs",
+          descriptionClassName
         )}
         initial={reducedMotion ? {} : { opacity: 0, y: 5 }}
         animate={{ opacity: 1, y: 0 }}

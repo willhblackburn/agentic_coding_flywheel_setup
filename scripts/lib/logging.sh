@@ -174,6 +174,29 @@ if ! declare -f log_warn >/dev/null; then
     }
 fi
 
+# Log sensitive warning message (tries to bypass log tee to avoid storing secrets)
+# Usage: log_sensitive "Generated password for user: ..."
+if ! declare -f log_sensitive >/dev/null; then
+    log_sensitive() {
+        local message="$1"
+
+        # If stderr is being tee'd, fd 3 is the original terminal stderr.
+        if { true >&3; } 2>/dev/null; then
+            printf "${ACFS_YELLOW}⚠ %s${ACFS_NC}\n" "$message" >&3
+            return 0
+        fi
+
+        # Fall back to /dev/tty when available to avoid log capture.
+        if [[ -w /dev/tty ]]; then
+            printf "${ACFS_YELLOW}⚠ %s${ACFS_NC}\n" "$message" > /dev/tty
+            return 0
+        fi
+
+        # Last resort: stderr (may be logged).
+        printf "${ACFS_YELLOW}⚠ %s${ACFS_NC}\n" "$message" >&2
+    }
+fi
+
 # Log error message (red with X)
 # Usage: log_error "Failed to install package"
 if ! declare -f log_error >/dev/null; then

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   Terminal,
@@ -26,6 +26,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import { motion, AnimatePresence } from "@/components/motion";
+import { useDrag } from "@use-gesture/react";
 import { Button } from "@/components/ui/button";
 import { Jargon } from "@/components/jargon";
 import { springs, fadeUp, staggerContainer, fadeScale } from "@/components/motion";
@@ -414,6 +415,24 @@ const WORKFLOW_STEPS = [
 
 function WorkflowStepsSection() {
   const { ref, isInView } = useScrollReveal({ threshold: 0.1 });
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const bind = useDrag(
+    ({ active, movement: [mx], memo }) => {
+      const scroller = scrollRef.current;
+      if (!scroller) return memo;
+      const start = memo ?? scroller.scrollLeft;
+      if (active) {
+        scroller.scrollLeft = start - mx;
+      }
+      return start;
+    },
+    {
+      axis: "x",
+      filterTaps: true,
+      threshold: 8,
+    }
+  );
 
   return (
     <section ref={ref as React.RefObject<HTMLElement>} className="border-t border-border/30 bg-card/30 py-24">
@@ -435,7 +454,10 @@ function WorkflowStepsSection() {
         {/* Horizontal scroll on mobile, wrap on desktop */}
         <div className="relative -mx-6 px-6 sm:mx-0 sm:px-0">
           <motion.div
-            className="flex gap-3 overflow-x-auto pb-4 sm:flex-wrap sm:justify-center sm:overflow-visible sm:pb-0 scrollbar-hide"
+            ref={scrollRef}
+            {...bind()}
+            style={{ touchAction: "pan-y" }}
+            className="flex gap-3 overflow-x-auto pb-4 sm:flex-wrap sm:justify-center sm:overflow-visible sm:pb-0 scrollbar-hide cursor-grab active:cursor-grabbing select-none"
             variants={staggerContainer}
             initial="hidden"
             animate={isInView ? "visible" : "hidden"}

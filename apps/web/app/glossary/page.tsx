@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { BookOpen, ChevronDown, Home, Search, Terminal, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { jargonDictionary } from "@/lib/jargon";
 import { cn } from "@/lib/utils";
 
@@ -139,6 +140,10 @@ export default function GlossaryPage() {
   }, [entries, query, category]);
 
   const clearQuery = useCallback(() => setQuery(""), []);
+  const resetFilters = useCallback(() => {
+    setQuery("");
+    setCategory("all");
+  }, []);
 
   // If the user lands on /glossary#some-key, scroll to it and open the entry.
   useEffect(() => {
@@ -177,7 +182,7 @@ export default function GlossaryPage() {
       <div className="pointer-events-none fixed inset-0 bg-gradient-cosmic opacity-50" />
       <div className="pointer-events-none fixed inset-0 bg-grid-pattern opacity-20" />
 
-      <div className="relative mx-auto max-w-5xl px-6 py-8 md:px-12 md:py-12">
+      <div className="relative mx-auto max-w-5xl px-6 pt-8 pb-24 md:px-12 md:py-12">
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
           <Link
@@ -269,11 +274,23 @@ export default function GlossaryPage() {
         {/* Results */}
         <div className="space-y-3">
           {filtered.length === 0 ? (
-            <Card className="border-border/50 bg-card/60 p-6 text-center">
-              <p className="text-sm text-muted-foreground">
-                No matches. Try a different search or switch back to{" "}
-                <span className="font-medium text-foreground">All</span>.
-              </p>
+            <Card className="border-border/50 bg-card/60 p-6">
+              <EmptyState
+                icon={Search}
+                title="No matches found"
+                description="Try a different search or switch back to All."
+                action={
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={resetFilters}
+                    className="border-primary/30 hover:bg-primary/10"
+                  >
+                    Reset filters
+                  </Button>
+                }
+                variant="compact"
+              />
             </Card>
           ) : (
             filtered.map((entry) => (
@@ -370,6 +387,24 @@ export default function GlossaryPage() {
               </details>
             ))
           )}
+        </div>
+      </div>
+
+      {/* Mobile thumb-zone nav */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/50 bg-background/95 px-4 py-3 backdrop-blur-md bottom-nav-safe md:hidden">
+        <div className="flex items-center gap-3">
+          <Button asChild size="lg" variant="outline" className="flex-1">
+            <Link href="/">
+              <Home className="mr-2 h-4 w-4" />
+              Home
+            </Link>
+          </Button>
+          <Button asChild size="lg" className="flex-1">
+            <Link href="/wizard/os-selection">
+              <Terminal className="mr-2 h-4 w-4" />
+              Wizard
+            </Link>
+          </Button>
         </div>
       </div>
     </div>

@@ -12,10 +12,11 @@ import {
 import Link from "next/link";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence, springs } from "@/components/motion";
-import { X, Lightbulb } from "lucide-react";
+import { Lightbulb } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getJargon, type JargonTerm } from "@/lib/jargon";
 import { useReducedMotion } from "@/lib/hooks/useReducedMotion";
+import { BottomSheet } from "@/components/ui/bottom-sheet";
 
 interface JargonProps {
   /** The term key to look up in the dictionary */
@@ -99,21 +100,6 @@ export function Jargon({ term, children, className, gradientHeading }: JargonPro
     setTooltipLayout({ position, style: { left, ...verticalStyle } });
   }, [isOpen, isMobile]);
 
-  // Lock body scroll when mobile sheet is open
-  useEffect(() => {
-    if (isOpen && isMobile) {
-      const scrollY = window.scrollY;
-      document.body.style.position = "fixed";
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = "100%";
-      return () => {
-        document.body.style.position = "";
-        document.body.style.top = "";
-        document.body.style.width = "";
-        window.scrollTo(0, scrollY);
-      };
-    }
-  }, [isOpen, isMobile]);
 
   const handleMouseEnter = useCallback(() => {
     if (isMobile) return;
@@ -164,33 +150,6 @@ export function Jargon({ term, children, className, gradientHeading }: JargonPro
     setIsOpen(false);
   }, []);
 
-  // Handle click outside and escape key for mobile
-  useEffect(() => {
-    if (!isOpen || !isMobile) return;
-
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (
-        triggerRef.current &&
-        !triggerRef.current.contains(target) &&
-        tooltipRef.current &&
-        !tooltipRef.current.contains(target)
-      ) {
-        setIsOpen(false);
-      }
-    };
-
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setIsOpen(false);
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleEscape);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleEscape);
-    };
-  }, [isOpen, isMobile]);
 
   if (!jargonData) {
     // If term not found, just render children without styling
@@ -279,60 +238,18 @@ export function Jargon({ term, children, className, gradientHeading }: JargonPro
         document.body
       )}
 
-      {/* Mobile Bottom Sheet - rendered via portal to escape stacking contexts */}
-      {canUsePortal && createPortal(
-        <AnimatePresence>
-          {isOpen && isMobile && (
-            <>
-              {/* Backdrop */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={prefersReducedMotion ? { duration: 0.12 } : { duration: 0.2 }}
-                className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
-                onClick={handleClose}
-                aria-hidden="true"
-              />
-
-              {/* Sheet */}
-              <motion.div
-                ref={tooltipRef}
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby={`jargon-sheet-title-${termKey}`}
-                initial={prefersReducedMotion ? { opacity: 0 } : { y: "100%" }}
-                animate={prefersReducedMotion ? { opacity: 1 } : { y: 0 }}
-                exit={prefersReducedMotion ? { opacity: 0 } : { y: "100%" }}
-                transition={prefersReducedMotion ? { duration: 0.12 } : springs.smooth}
-                className="fixed inset-x-0 bottom-0 z-50 flex max-h-[80vh] flex-col rounded-t-3xl border-t border-border/50 bg-card/98 shadow-2xl backdrop-blur-xl"
-              >
-                {/* Handle */}
-                <div className="flex shrink-0 justify-center pt-3 pb-1">
-                  <div className="h-1 w-10 rounded-full bg-muted-foreground/30" />
-                </div>
-
-                {/* Close button */}
-                <button
-                  onClick={handleClose}
-                  className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground"
-                  aria-label="Close"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-
-                {/* Content - iOS needs overscroll-contain and touch-action for proper scrolling */}
-                <div
-                  className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pt-2 pb-[calc(2rem+env(safe-area-inset-bottom,0px))]"
-                  style={{ WebkitOverflowScrolling: 'touch' }}
-                >
-                  <SheetContent term={jargonData} termKey={termKey} />
-                </div>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>,
-        document.body
+      {/* Mobile Bottom Sheet */}
+      {canUsePortal && (
+        <BottomSheet
+          open={isOpen && isMobile}
+          onClose={handleClose}
+          title={jargonData.term}
+          showHandle
+          closeOnBackdrop
+          swipeable={!prefersReducedMotion}
+        >
+          <SheetContent term={jargonData} termKey={termKey} />
+        </BottomSheet>
       )}
     </>
   );

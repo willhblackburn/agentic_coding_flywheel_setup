@@ -81,7 +81,10 @@ ensure_user() {
             
             # Print password so user isn't locked out of sudo in safe mode
             echo "" >&2
-            if declare -f log_warn >/dev/null; then
+            if declare -f log_sensitive >/dev/null; then
+                log_sensitive "Generated password for '$target': $passwd"
+                log_sensitive "Save this password! You may need it for sudo access."
+            elif declare -f log_warn >/dev/null; then
                 log_warn "Generated password for '$target': $passwd"
                 log_warn "Save this password! You may need it for sudo access."
             else

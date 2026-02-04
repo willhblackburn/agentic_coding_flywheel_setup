@@ -158,6 +158,7 @@ export function BottomSheet({
             tabIndex={-1}
             drag={swipeable && !prefersReducedMotion ? "y" : false}
             dragControls={dragControls}
+            dragListener={!showHandle}
             dragConstraints={{ top: 0 }}
             dragElastic={{ top: 0, bottom: 0.5 }}
             onDragEnd={handleDragEnd}
