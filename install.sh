@@ -52,7 +52,7 @@ ACFS_VERSION="0.5.0"
 # Allow fork installations by overriding these via environment variables
 ACFS_REPO_OWNER="${ACFS_REPO_OWNER:-willhblackburn}"
 ACFS_REPO_NAME="${ACFS_REPO_NAME:-agentic_coding_flywheel_setup}"
-ACFS_REF="${ACFS_REF:-main}"
+ACFS_REF="${ACFS_REF:-fix/regenerate-manifest-index}"
 # Preserve the original ref (branch/tag/sha) before resolving to a commit SHA.
 ACFS_REF_INPUT="$ACFS_REF"
 # Checksums ref defaults to ACFS_REF_INPUT, but pinned tags/SHAs fall back to main
