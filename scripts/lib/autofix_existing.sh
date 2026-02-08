@@ -141,6 +141,29 @@ autofix_existing_acfs_check() {
     local state
     state=$(detect_installation_state)
 
+    # Handle missing jq gracefully (pre-bootstrap scenario)
+    if ! command -v jq &>/dev/null; then
+        # Simple JSON output without jq
+        local markers_str="[]"
+        if [[ -n "$markers" ]]; then
+            # Convert space-separated to JSON array
+            markers_str="["
+            local first=true
+            # shellcheck disable=SC2086
+            for m in $markers; do
+                if $first; then
+                    markers_str="$markers_str\"$m\""
+                    first=false
+                else
+                    markers_str="$markers_str,\"$m\""
+                fi
+            done
+            markers_str="$markers_str]"
+        fi
+        echo "{\"state\":\"$state\",\"version\":\"$version\",\"markers\":$markers_str}"
+        return 0
+    fi
+
     local markers_json
     if [[ -n "$markers" ]]; then
         # shellcheck disable=SC2086
@@ -315,6 +338,13 @@ update_path_entries() {
                     echo 'export PATH="$HOME/.local/bin:$PATH"'
                 } >> "$config"
 
+                local backups_json
+                if command -v jq &>/dev/null; then
+                    backups_json=$(echo "$backup" | jq -c '[.]' 2>/dev/null || echo '[]')
+                else
+                    backups_json="[$backup]"
+                fi
+
                 record_change \
                     "acfs" \
                     "Added PATH entry to $config" \
@@ -322,7 +352,7 @@ update_path_entries() {
                     false \
                     "info" \
                     "[\"$config\"]" \
-                    "$(echo "$backup" | jq -c '[.]' 2>/dev/null || echo '[]')" \
+                    "$backups_json" \
                     '[]'
             fi
         fi
@@ -345,7 +375,13 @@ upgrade_existing_installation() {
         local config_backup
         config_backup=$(create_backup "$HOME/.acfs/config" "upgrade-config-backup")
         if [[ -n "$config_backup" ]]; then
-            log_info "[UPGRADE] Config backed up: $(echo "$config_backup" | jq -r '.backup' 2>/dev/null || echo "$config_backup")"
+            local backup_path
+            if command -v jq &>/dev/null; then
+                backup_path=$(echo "$config_backup" | jq -r '.backup' 2>/dev/null || echo "$config_backup")
+            else
+                backup_path=$(echo "$config_backup" | grep -o '"backup":"[^"]*"' | sed 's/"backup":"//;s/"$//' || echo "$config_backup")
+            fi
+            log_info "[UPGRADE] Config backed up: $backup_path"
         fi
     fi
 
@@ -419,14 +455,29 @@ create_installation_backup() {
         fi
     done
 
-    # Write manifest
-    local items_json
-    items_json=$(printf '%s\n' "${backed_up_items[@]}" | jq -s '.')
+    # Write manifest - handle missing jq gracefully
+    if command -v jq &>/dev/null; then
+        local items_json
+        items_json=$(printf '%s\n' "${backed_up_items[@]}" | jq -s '.')
 
-    jq -n \
-        --arg created "$(date -Iseconds)" \
-        --argjson items "$items_json" \
-        '{created: $created, backed_up_items: $items}' > "$backup_manifest"
+        jq -n \
+            --arg created "$(date -Iseconds)" \
+            --argjson items "$items_json" \
+            '{created: $created, backed_up_items: $items}' > "$backup_manifest"
+    else
+        # Simple JSON construction without jq
+        local items_str=""
+        local first=true
+        for item in "${backed_up_items[@]}"; do
+            if $first; then
+                items_str="$item"
+                first=false
+            else
+                items_str="$items_str,$item"
+            fi
+        done
+        echo "{\"created\":\"$(date -Iseconds)\",\"backed_up_items\":[$items_str]}" > "$backup_manifest"
+    fi
 
     echo "$backup_dir"
 }
@@ -484,7 +535,22 @@ clean_reinstall() {
 
     # Step 2: Record the clean reinstall change
     local artifacts_json
-    artifacts_json=$(printf '%s\n' "${ACFS_ARTIFACTS[@]}" | jq -R . | jq -s .)
+    if command -v jq &>/dev/null; then
+        artifacts_json=$(printf '%s\n' "${ACFS_ARTIFACTS[@]}" | jq -R . | jq -s .)
+    else
+        # Simple JSON array construction without jq
+        artifacts_json="["
+        local first=true
+        for artifact in "${ACFS_ARTIFACTS[@]}"; do
+            if $first; then
+                artifacts_json="$artifacts_json\"$artifact\""
+                first=false
+            else
+                artifacts_json="$artifacts_json,\"$artifact\""
+            fi
+        done
+        artifacts_json="$artifacts_json]"
+    fi
 
     record_change \
         "acfs" \

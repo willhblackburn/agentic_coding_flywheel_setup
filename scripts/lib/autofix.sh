@@ -28,6 +28,16 @@ ACFS_AUTOFIX_INITIALIZED=false
 ACFS_AUTOFIX_LOCK_FD=""
 
 # =============================================================================
+# jq Availability Check
+# =============================================================================
+# jq may not be installed during early bootstrap phases.
+# Functions gracefully degrade when jq is unavailable.
+
+_autofix_has_jq() {
+    command -v jq &>/dev/null
+}
+
+# =============================================================================
 # Logging Helpers (avoid dependency on logging.sh)
 # =============================================================================
 
@@ -166,6 +176,12 @@ append_atomic() {
 compute_record_checksum() {
     local record="$1"
 
+    # Skip if jq not available
+    if ! _autofix_has_jq; then
+        echo "no-jq"
+        return 0
+    fi
+
     # Remove the record_checksum field before computing
     local record_without_checksum
     record_without_checksum=$(echo "$record" | jq -c 'del(.record_checksum)')
@@ -175,6 +191,12 @@ compute_record_checksum() {
 
 # Verify integrity of the state files
 verify_state_integrity() {
+    # Skip integrity verification if jq not available (pre-bootstrap)
+    if ! _autofix_has_jq; then
+        log_debug "[INTEGRITY] Skipping verification (jq not available)"
+        return 0
+    fi
+
     log_debug "[INTEGRITY] Verifying state file integrity..."
 
     local errors=0
@@ -256,6 +278,12 @@ verify_state_integrity() {
 
 # Attempt to repair corrupted state files
 repair_state_files() {
+    # Skip repair if jq not available (pre-bootstrap)
+    if ! _autofix_has_jq; then
+        log_debug "[REPAIR] Skipping repair (jq not available)"
+        return 0
+    fi
+
     log_info "[REPAIR] Attempting to repair state files..."
 
     local repaired=0
@@ -311,6 +339,12 @@ repair_state_files() {
 
 # Update the integrity checkpoint file
 update_integrity_file() {
+    # Skip if jq not available (pre-bootstrap)
+    if ! _autofix_has_jq; then
+        log_debug "[INTEGRITY] Skipping integrity file update (jq not available)"
+        return 0
+    fi
+
     local changes_checksum=""
     local undos_checksum=""
     local backup_count=0
@@ -471,6 +505,12 @@ create_backup() {
     log_debug "[BACKUP] Created: $backup_path (checksum: ${checksum:0:16}...)"
 
     # Return JSON with backup info (compact for embedding in records)
+    # If jq not available, return simple format
+    if ! _autofix_has_jq; then
+        echo "{\"original\":\"$original_path\",\"backup\":\"$backup_path\",\"checksum\":\"$checksum\"}"
+        return 0
+    fi
+
     jq -cn \
         --arg orig "$original_path" \
         --arg back "$backup_path" \
@@ -536,40 +576,51 @@ record_change() {
     local timestamp
     timestamp=$(date -Iseconds)
 
-    # Build JSON record (without checksum first) - compact for JSONL
     local record
-    record=$(jq -cn \
-        --arg id "$change_id" \
-        --arg ts "$timestamp" \
-        --arg cat "$category" \
-        --arg desc "$description" \
-        --arg undo "$undo_command" \
-        --argjson root "$requires_root" \
-        --arg sev "$severity" \
-        --argjson files "$files_json" \
-        --argjson backups "$backups_json" \
-        --argjson deps "$depends_on" \
-        --arg sess "$ACFS_SESSION_ID" \
-        '{
-          id: $id,
-          timestamp: $ts,
-          category: $cat,
-          description: $desc,
-          undo_command: $undo,
-          undo_requires_root: $root,
-          severity: $sev,
-          files_affected: $files,
-          backups: $backups,
-          depends_on: $deps,
-          session_id: $sess,
-          reversible: true,
-          undone: false
-        }')
-
-    # Compute and add record checksum (compact for JSONL)
     local record_checksum
-    record_checksum=$(compute_record_checksum "$record")
-    record=$(echo "$record" | jq -c --arg sum "$record_checksum" '. + {record_checksum: $sum}')
+
+    # Build JSON record - handle missing jq gracefully
+    if ! _autofix_has_jq; then
+        # Simple JSON construction without jq (pre-bootstrap fallback)
+        # Escape quotes in description and undo_command for JSON safety
+        local desc_escaped="${description//\"/\\\"}"
+        local undo_escaped="${undo_command//\"/\\\"}"
+        record="{\"id\":\"$change_id\",\"timestamp\":\"$timestamp\",\"category\":\"$category\",\"description\":\"$desc_escaped\",\"undo_command\":\"$undo_escaped\",\"session_id\":\"$ACFS_SESSION_ID\"}"
+        record_checksum="no-jq"
+    else
+        # Build JSON record (without checksum first) - compact for JSONL
+        record=$(jq -cn \
+            --arg id "$change_id" \
+            --arg ts "$timestamp" \
+            --arg cat "$category" \
+            --arg desc "$description" \
+            --arg undo "$undo_command" \
+            --argjson root "$requires_root" \
+            --arg sev "$severity" \
+            --argjson files "$files_json" \
+            --argjson backups "$backups_json" \
+            --argjson deps "$depends_on" \
+            --arg sess "$ACFS_SESSION_ID" \
+            '{
+              id: $id,
+              timestamp: $ts,
+              category: $cat,
+              description: $desc,
+              undo_command: $undo,
+              undo_requires_root: $root,
+              severity: $sev,
+              files_affected: $files,
+              backups: $backups,
+              depends_on: $deps,
+              session_id: $sess,
+              reversible: true,
+              undone: false
+            }')
+
+        # Compute and add record checksum (compact for JSONL)
+        record_checksum=$(compute_record_checksum "$record")
+        record=$(echo "$record" | jq -c --arg sum "$record_checksum" '. + {record_checksum: $sum}')
+    fi
 
     # Store in memory
     ACFS_CHANGE_RECORDS["$change_id"]="$record"
