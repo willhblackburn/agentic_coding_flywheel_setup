@@ -65,6 +65,20 @@ autofix_unattended_upgrades_check() {
     fi
 
     # Output JSON for structured handling
+    # Handle missing jq gracefully (pre-bootstrap scenario)
+    if ! command -v jq &>/dev/null; then
+        # Simple JSON output without jq
+        local locks_str=""
+        if [[ ${#held_locks[@]} -gt 0 ]]; then
+            locks_str=$(printf '"%s",' "${held_locks[@]}")
+            locks_str="[${locks_str%,}]"
+        else
+            locks_str="[]"
+        fi
+        echo "{\"status\":\"$status\",\"details\":\"$details\",\"held_locks\":$locks_str,\"apt_pids\":\"$apt_pids\"}"
+        return 0
+    fi
+
     local locks_json
     if [[ ${#held_locks[@]} -gt 0 ]]; then
         locks_json=$(printf '%s\n' "${held_locks[@]}" | jq -R . | jq -s .)
@@ -85,7 +99,14 @@ autofix_unattended_upgrades_needs_fix() {
     local check_result
     check_result=$(autofix_unattended_upgrades_check)
     local status
-    status=$(echo "$check_result" | jq -r '.status')
+
+    # Handle missing jq gracefully
+    if command -v jq &>/dev/null; then
+        status=$(echo "$check_result" | jq -r '.status')
+    else
+        # Extract status from simple JSON using grep/sed
+        status=$(echo "$check_result" | grep -o '"status":"[^"]*"' | sed 's/"status":"//;s/"$//')
+    fi
 
     [[ "$status" != "none" ]]
 }
@@ -110,8 +131,17 @@ autofix_unattended_upgrades_fix() {
     # Get current state
     local check_result
     check_result=$(autofix_unattended_upgrades_check)
-    local status
-    status=$(echo "$check_result" | jq -r '.status')
+    local status details
+
+    # Handle missing jq gracefully
+    if command -v jq &>/dev/null; then
+        status=$(echo "$check_result" | jq -r '.status')
+        details=$(echo "$check_result" | jq -r '.details')
+    else
+        # Extract from simple JSON using grep/sed
+        status=$(echo "$check_result" | grep -o '"status":"[^"]*"' | sed 's/"status":"//;s/"$//')
+        details=$(echo "$check_result" | grep -o '"details":"[^"]*"' | sed 's/"details":"//;s/"$//')
+    fi
 
     if [[ "$status" == "none" ]]; then
         log_info "[AUTO-FIX:unattended] No issues detected"
@@ -119,7 +149,7 @@ autofix_unattended_upgrades_fix() {
     fi
 
     log_info "[AUTO-FIX:unattended] Detected status: $status"
-    log_info "[AUTO-FIX:unattended] Details: $(echo "$check_result" | jq -r '.details')"
+    log_info "[AUTO-FIX:unattended] Details: $details"
 
     if [[ "$mode" == "dry-run" ]]; then
         log_info "[DRY-RUN] Would stop unattended-upgrades service"
@@ -373,9 +403,13 @@ autofix_unattended_upgrades_restore() {
     if sudo systemctl start unattended-upgrades 2>&1; then
         # Mark as auto-restored in undos file
         local restore_record
-        restore_record=$(jq -cn \
-            --arg ts "$(date -Iseconds)" \
-            '{auto_restored: "unattended-upgrades", timestamp: $ts}')
+        if command -v jq &>/dev/null; then
+            restore_record=$(jq -cn \
+                --arg ts "$(date -Iseconds)" \
+                '{auto_restored: "unattended-upgrades", timestamp: $ts}')
+        else
+            restore_record="{\"auto_restored\":\"unattended-upgrades\",\"timestamp\":\"$(date -Iseconds)\"}"
+        fi
 
         append_atomic "$ACFS_UNDOS_FILE" "$restore_record"
         log_info "[POST-INSTALL] Successfully re-enabled unattended-upgrades"
